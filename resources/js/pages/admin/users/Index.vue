@@ -2,6 +2,7 @@
 import { Head, Link } from '@inertiajs/vue3';
 import { Plus } from '@lucide/vue';
 import SearchFilter from '@/components/admin/SearchFilter.vue';
+import SortableHead from '@/components/admin/SortableHead.vue';
 import Heading from '@/components/Heading.vue';
 import Pagination from '@/components/Pagination.vue';
 import { Badge } from '@/components/ui/badge';
@@ -15,9 +16,10 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { useDatatable } from '@/composables/useDatatable';
 import { usePermission } from '@/composables/usePermission';
 import { create, edit, index } from '@/routes/admin/users';
-import type { Paginated } from '@/types';
+import type { DatatableFilters, Paginated } from '@/types';
 
 type UserRow = {
     id: number;
@@ -27,9 +29,9 @@ type UserRow = {
     created_at: string | null;
 };
 
-defineProps<{
+const props = defineProps<{
     users: Paginated<UserRow>;
-    filters: { search: string };
+    filters: DatatableFilters;
 }>();
 
 defineOptions({
@@ -44,6 +46,10 @@ defineOptions({
 });
 
 const { hasPermission } = usePermission();
+const { search, sort, direction, sortBy } = useDatatable(
+    index().url,
+    props.filters,
+);
 </script>
 
 <template>
@@ -64,20 +70,37 @@ const { hasPermission } = usePermission();
             </Button>
         </div>
 
-        <SearchFilter
-            :initial="filters.search"
-            :url="index().url"
-            placeholder="Search users..."
-        />
+        <SearchFilter v-model="search" placeholder="Search users..." />
 
         <div class="rounded-xl border">
             <Table>
                 <TableHeader>
                     <TableRow>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Email</TableHead>
+                        <SortableHead
+                            column="name"
+                            :sort="sort"
+                            :direction="direction"
+                            @sort="sortBy"
+                        >
+                            Name
+                        </SortableHead>
+                        <SortableHead
+                            column="email"
+                            :sort="sort"
+                            :direction="direction"
+                            @sort="sortBy"
+                        >
+                            Email
+                        </SortableHead>
                         <TableHead>Roles</TableHead>
-                        <TableHead>Created</TableHead>
+                        <SortableHead
+                            column="created_at"
+                            :sort="sort"
+                            :direction="direction"
+                            @sort="sortBy"
+                        >
+                            Created
+                        </SortableHead>
                         <TableHead class="w-0">
                             <span class="sr-only">Actions</span>
                         </TableHead>

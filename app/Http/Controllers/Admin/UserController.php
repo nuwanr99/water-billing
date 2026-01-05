@@ -6,8 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreUserRequest;
 use App\Http\Requests\Admin\UpdateUserPasswordRequest;
 use App\Http\Requests\Admin\UpdateUserRequest;
+use App\Libraries\Datatable;
 use App\Models\User;
-use Illuminate\Contracts\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -21,20 +21,16 @@ class UserController extends Controller
      */
     public function index(Request $request): Response
     {
-        $search = $request->string('search')->trim()->value();
+        $datatable = new Datatable(
+            $request,
+            searchColumns: [['first_name', 'last_name'], 'email'],
+            orderColumns: ['name' => ['first_name', 'last_name'], 'email', 'created_at'],
+            defaultSort: 'created_at',
+            defaultDirection: 'desc',
+        );
 
-        $users = User::query()
-            ->with('roles:id,name')
-            ->when($search !== '', function (Builder $query) use ($search) {
-                $query->where(function (Builder $query) use ($search) {
-                    $query->where('first_name', 'like', "%{$search}%")
-                        ->orWhere('last_name', 'like', "%{$search}%")
-                        ->orWhere('email', 'like', "%{$search}%");
-                });
-            })
-            ->latest()
-            ->paginate(10)
-            ->withQueryString()
+        $users = $datatable
+            ->paginate(User::query()->with('roles:id,name'))
             ->through(fn (User $user): array => [
                 'id' => $user->id,
                 'name' => $user->name,
@@ -45,7 +41,7 @@ class UserController extends Controller
 
         return Inertia::render('admin/users/Index', [
             'users' => $users,
-            'filters' => ['search' => $search],
+            'filters' => $datatable->filters(),
         ]);
     }
 

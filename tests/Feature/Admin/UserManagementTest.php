@@ -21,6 +21,28 @@ test('the users index is displayed', function () {
         );
 });
 
+test('the users index can be searched and sorted', function () {
+    User::factory()->create(['first_name' => 'Aaron', 'last_name' => 'Aardvark']);
+    User::factory()->create(['first_name' => 'Zed', 'last_name' => 'Zulu']);
+
+    $this->actingAs($this->admin)
+        ->get(route('admin.users.index', ['sort' => 'name', 'direction' => 'asc']))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('users.data.0.name', 'Aaron Aardvark')
+            ->where('filters.sort', 'name')
+            ->where('filters.direction', 'asc')
+        );
+
+    $this->actingAs($this->admin)
+        ->get(route('admin.users.index', ['search' => 'Zulu']))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->count('users.data', 1)
+            ->where('users.data.0.name', 'Zed Zulu')
+        );
+});
+
 test('a user can be created with roles', function () {
     $response = $this->actingAs($this->admin)->post(route('admin.users.store'), [
         'first_name' => 'New',

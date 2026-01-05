@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Head } from '@inertiajs/vue3';
 import SearchFilter from '@/components/admin/SearchFilter.vue';
+import SortableHead from '@/components/admin/SortableHead.vue';
 import Heading from '@/components/Heading.vue';
 import Pagination from '@/components/Pagination.vue';
 import { Badge } from '@/components/ui/badge';
@@ -9,12 +10,12 @@ import {
     TableBody,
     TableCell,
     TableEmpty,
-    TableHead,
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { useDatatable } from '@/composables/useDatatable';
 import { index } from '@/routes/admin/permissions';
-import type { Paginated } from '@/types';
+import type { DatatableFilters, Paginated } from '@/types';
 
 type PermissionRow = {
     id: number;
@@ -23,9 +24,9 @@ type PermissionRow = {
     created_at: string | null;
 };
 
-defineProps<{
+const props = defineProps<{
     permissions: Paginated<PermissionRow>;
-    filters: { search: string };
+    filters: DatatableFilters;
 }>();
 
 defineOptions({
@@ -38,6 +39,11 @@ defineOptions({
         ],
     },
 });
+
+const { search, sort, direction, sortBy } = useDatatable(
+    index().url,
+    props.filters,
+);
 </script>
 
 <template>
@@ -50,19 +56,36 @@ defineOptions({
             description="Permissions are defined in code and grouped by category — assign them to roles from the Roles page"
         />
 
-        <SearchFilter
-            :initial="filters.search"
-            :url="index().url"
-            placeholder="Search permissions..."
-        />
+        <SearchFilter v-model="search" placeholder="Search permissions..." />
 
         <div class="rounded-xl border">
             <Table>
                 <TableHeader>
                     <TableRow>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Category</TableHead>
-                        <TableHead>Created</TableHead>
+                        <SortableHead
+                            column="name"
+                            :sort="sort"
+                            :direction="direction"
+                            @sort="sortBy"
+                        >
+                            Name
+                        </SortableHead>
+                        <SortableHead
+                            column="category"
+                            :sort="sort"
+                            :direction="direction"
+                            @sort="sortBy"
+                        >
+                            Category
+                        </SortableHead>
+                        <SortableHead
+                            column="created_at"
+                            :sort="sort"
+                            :direction="direction"
+                            @sort="sortBy"
+                        >
+                            Created
+                        </SortableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>

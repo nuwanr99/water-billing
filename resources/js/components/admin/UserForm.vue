@@ -121,6 +121,7 @@ const submit = () => {
                 <Input
                     id="wa_number"
                     v-model="form.wa_number"
+                    autocomplete="phone"
                     type="tel"
                     placeholder="WhatsApp number"
                 />

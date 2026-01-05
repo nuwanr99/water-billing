@@ -4,6 +4,12 @@ export type PaginationLink = {
     active: boolean;
 };
 
+export type DatatableFilters = {
+    search: string;
+    sort: string | null;
+    direction: 'asc' | 'desc' | null;
+};
+
 export type Paginated<T> = {
     data: T[];
     links: PaginationLink[];

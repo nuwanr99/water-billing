@@ -7,8 +7,8 @@ use App\Http\Requests\Admin\DeleteRoleRequest;
 use App\Http\Requests\Admin\StoreRoleRequest;
 use App\Http\Requests\Admin\UpdateRolePermissionsRequest;
 use App\Http\Requests\Admin\UpdateRoleRequest;
+use App\Libraries\Datatable;
 use App\Models\PermissionCategory;
-use Illuminate\Contracts\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -22,14 +22,15 @@ class RoleController extends Controller
      */
     public function index(Request $request): Response
     {
-        $search = $request->string('search')->trim()->value();
+        $datatable = new Datatable(
+            $request,
+            searchColumns: ['name'],
+            orderColumns: ['name', 'permissions_count', 'created_at'],
+            defaultSort: 'name',
+        );
 
-        $roles = Role::query()
-            ->withCount('permissions')
-            ->when($search !== '', fn (Builder $query) => $query->where('name', 'like', "%{$search}%"))
-            ->orderBy('name')
-            ->paginate(10)
-            ->withQueryString()
+        $roles = $datatable
+            ->paginate(Role::query()->withCount('permissions'))
             ->through(fn (Role $role): array => [
                 'id' => $role->id,
                 'name' => $role->name,
@@ -39,7 +40,7 @@ class RoleController extends Controller
 
         return Inertia::render('admin/roles/Index', [
             'roles' => $roles,
-            'filters' => ['search' => $search],
+            'filters' => $datatable->filters(),
         ]);
     }
 
