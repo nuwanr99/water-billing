@@ -11,14 +11,14 @@ import { Label } from '@/components/ui/label';
 import { edit } from '@/routes/profile';
 
 defineOptions({
-    layout: {
-        breadcrumbs: [
-            {
-                title: 'Profile settings',
-                href: edit(),
-            },
-        ],
-    },
+  layout: {
+    breadcrumbs: [
+      {
+        title: 'Profile settings',
+        href: edit(),
+      },
+    ],
+  },
 });
 
 const page = usePage();
@@ -26,74 +26,74 @@ const user = computed(() => page.props.auth.user);
 </script>
 
 <template>
-    <Head title="Profile settings" />
+  <Head title="Profile settings" />
 
-    <h1 class="sr-only">Profile settings</h1>
+  <h1 class="sr-only">Profile settings</h1>
 
-    <div class="flex flex-col space-y-6">
-        <Heading
-            variant="small"
-            title="Profile"
-            description="Update your name and email address"
+  <div class="flex flex-col space-y-6">
+    <Heading
+      variant="small"
+      title="Profile"
+      description="Update your name and email address"
+    />
+
+    <Form
+      v-bind="ProfileController.update.form()"
+      class="space-y-6"
+      v-slot="{ errors, processing }"
+    >
+      <div class="grid gap-6 sm:grid-cols-2">
+        <div class="grid gap-2">
+          <Label for="first_name">First name</Label>
+          <Input
+            id="first_name"
+            class="mt-1 block w-full"
+            name="first_name"
+            :default-value="user.first_name"
+            required
+            autocomplete="given-name"
+            placeholder="First name"
+          />
+          <InputError class="mt-2" :message="errors.first_name" />
+        </div>
+
+        <div class="grid gap-2">
+          <Label for="last_name">Last name</Label>
+          <Input
+            id="last_name"
+            class="mt-1 block w-full"
+            name="last_name"
+            :default-value="user.last_name"
+            required
+            autocomplete="family-name"
+            placeholder="Last name"
+          />
+          <InputError class="mt-2" :message="errors.last_name" />
+        </div>
+      </div>
+
+      <div class="grid gap-2">
+        <Label for="email">Email address</Label>
+        <Input
+          id="email"
+          type="email"
+          class="mt-1 block w-full"
+          name="email"
+          :default-value="user.email"
+          required
+          autocomplete="username"
+          placeholder="Email address"
         />
+        <InputError class="mt-2" :message="errors.email" />
+      </div>
 
-        <Form
-            v-bind="ProfileController.update.form()"
-            class="space-y-6"
-            v-slot="{ errors, processing }"
+      <div class="flex items-center gap-4">
+        <Button :disabled="processing" data-test="update-profile-button"
+          >Save</Button
         >
-            <div class="grid gap-6 sm:grid-cols-2">
-                <div class="grid gap-2">
-                    <Label for="first_name">First name</Label>
-                    <Input
-                        id="first_name"
-                        class="mt-1 block w-full"
-                        name="first_name"
-                        :default-value="user.first_name"
-                        required
-                        autocomplete="given-name"
-                        placeholder="First name"
-                    />
-                    <InputError class="mt-2" :message="errors.first_name" />
-                </div>
+      </div>
+    </Form>
+  </div>
 
-                <div class="grid gap-2">
-                    <Label for="last_name">Last name</Label>
-                    <Input
-                        id="last_name"
-                        class="mt-1 block w-full"
-                        name="last_name"
-                        :default-value="user.last_name"
-                        required
-                        autocomplete="family-name"
-                        placeholder="Last name"
-                    />
-                    <InputError class="mt-2" :message="errors.last_name" />
-                </div>
-            </div>
-
-            <div class="grid gap-2">
-                <Label for="email">Email address</Label>
-                <Input
-                    id="email"
-                    type="email"
-                    class="mt-1 block w-full"
-                    name="email"
-                    :default-value="user.email"
-                    required
-                    autocomplete="username"
-                    placeholder="Email address"
-                />
-                <InputError class="mt-2" :message="errors.email" />
-            </div>
-
-            <div class="flex items-center gap-4">
-                <Button :disabled="processing" data-test="update-profile-button"
-                    >Save</Button
-                >
-            </div>
-        </Form>
-    </div>
-
-    <DeleteUser />
+  <DeleteUser />
 </template>
