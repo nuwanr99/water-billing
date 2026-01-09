@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\PermissionController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Admin\WaterAccountController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('admin')->name('admin.')->middleware(['auth', 'verified', 'can:admin'])->group(function () {
@@ -27,6 +28,15 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'verified', 'can:adm
         Route::put('/{role}', [RoleController::class, 'update'])->middleware('can:roles.edit')->name('update');
         Route::put('/{role}/permissions', [RoleController::class, 'updatePermissions'])->middleware('can:roles.edit')->name('permissions.update');
         Route::delete('/{role}', [RoleController::class, 'destroy'])->middleware('can:roles.delete')->name('destroy');
+    });
+
+    Route::prefix('water-accounts')->name('water-accounts.')->group(function () {
+        Route::get('/', [WaterAccountController::class, 'index'])->middleware('can:water-accounts.view')->name('index');
+        Route::get('/create', [WaterAccountController::class, 'create'])->middleware('can:water-accounts.create')->name('create');
+        Route::get('/owners', [WaterAccountController::class, 'owners'])->middleware('can:water-accounts.view')->name('owners');
+        Route::post('/', [WaterAccountController::class, 'store'])->middleware('can:water-accounts.create')->name('store');
+        Route::get('/{waterAccount}', [WaterAccountController::class, 'edit'])->middleware('can:water-accounts.edit')->name('edit');
+        Route::put('/{waterAccount}', [WaterAccountController::class, 'update'])->middleware('can:water-accounts.edit')->name('update');
     });
 
     Route::get('/permissions', [PermissionController::class, 'index'])->middleware('can:permissions.view')->name('permissions.index');

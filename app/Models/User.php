@@ -3,12 +3,14 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Enums\WaterAccountStatus;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Appends;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
@@ -64,6 +66,27 @@ class User extends Authenticatable implements PasskeyUser
     protected function name(): Attribute
     {
         return Attribute::get(fn (): string => trim("{$this->first_name} {$this->last_name}"));
+    }
+
+    /**
+     * Get the water accounts owned by the user.
+     *
+     * @return HasMany<WaterAccount, $this>
+     */
+    public function waterAccounts(): HasMany
+    {
+        return $this->hasMany(WaterAccount::class);
+    }
+
+    /**
+     * Resolve the user's currently selected water account, preferring the
+     * given account when it is theirs, then the first active account.
+     */
+    public function resolveCurrentWaterAccount(?int $preferredId = null): ?WaterAccount
+    {
+        return $this->waterAccounts->firstWhere('id', $preferredId)
+            ?? $this->waterAccounts->firstWhere('status', WaterAccountStatus::Active)
+            ?? $this->waterAccounts->first();
     }
 
     /**

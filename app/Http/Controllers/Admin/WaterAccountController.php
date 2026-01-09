@@ -1,0 +1,165 @@
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\StoreWaterAccountRequest;
+use App\Http\Requests\Admin\UpdateWaterAccountRequest;
+use App\Libraries\Datatable;
+use App\Models\User;
+use App\Models\WaterAccount;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Inertia\Inertia;
+use Inertia\Response;
+
+class WaterAccountController extends Controller
+{
+    /**
+     * Show the water accounts list.
+     */
+    public function index(Request $request): Response
+    {
+        $datatable = new Datatable(
+            $request,
+            searchColumns: ['account_number', 'meter_number', 'owner.first_name', 'owner.last_name'],
+            orderColumns: [
+                'account_number',
+                'status',
+                'connected_at',
+                'created_at',
+                'owner' => fn (Builder $query, string $direction) => $query->orderBy(
+                    User::select('first_name')->whereColumn('users.id', 'water_accounts.user_id'),
+                    $direction === 'desc' ? 'desc' : 'asc',
+                ),
+            ],
+            defaultSort: 'created_at',
+            defaultDirection: 'desc',
+        );
+
+        $waterAccounts = $datatable
+            ->paginate(WaterAccount::query()->with('owner:id,first_name,last_name'))
+            ->through(fn (WaterAccount $waterAccount): array => [
+                'id' => $waterAccount->id,
+                'account_number' => $waterAccount->account_number,
+                'meter_number' => $waterAccount->meter_number,
+                'owner' => [
+                    'id' => $waterAccount->owner->id,
+                    'name' => $waterAccount->owner->name,
+                ],
+                'status' => $waterAccount->status->value,
+                'connected_at' => $waterAccount->connected_at?->toFormattedDateString(),
+                'created_at' => $waterAccount->created_at?->toFormattedDateString(),
+            ]);
+
+        return Inertia::render('admin/water-accounts/Index', [
+            'waterAccounts' => $waterAccounts,
+            'filters' => $datatable->filters(),
+        ]);
+    }
+
+    /**
+     * Search members to assign as the water account owner.
+     */
+    public function owners(Request $request): JsonResponse
+    {
+        $search = $request->string('search')->trim()->value();
+
+        $owners = User::query()
+            ->role('Member')
+            ->when($search !== '', function (Builder $query) use ($search) {
+                $term = "%{$search}%";
+
+                $query->where(fn (Builder $subQuery) => $subQuery
+                    ->orWhere('first_name', 'like', $term)
+                    ->orWhere('last_name', 'like', $term)
+                    ->orWhere('email', 'like', $term));
+            })
+            ->orderBy('first_name')
+            ->orderBy('last_name')
+            ->limit(20)
+            ->get(['id', 'first_name', 'last_name', 'email'])
+            ->map(fn (User $user): array => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+            ]);
+
+        return response()->json($owners);
+    }
+
+    /**
+     * Show the create water account page.
+     */
+    public function create(): Response
+    {
+        return Inertia::render('admin/water-accounts/Create', [
+            'suggestedAccountNumber' => $this->suggestAccountNumber(),
+        ]);
+    }
+
+    /**
+     * Store a new water account.
+     */
+    public function store(StoreWaterAccountRequest $request): RedirectResponse
+    {
+        WaterAccount::create($request->validated());
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('Water account created.')]);
+
+        return to_route('admin.water-accounts.index');
+    }
+
+    /**
+     * Show the edit water account page.
+     */
+    public function edit(WaterAccount $waterAccount): Response
+    {
+        $waterAccount->load('owner:id,first_name,last_name,email');
+
+        return Inertia::render('admin/water-accounts/Edit', [
+            'waterAccount' => [
+                'id' => $waterAccount->id,
+                'account_number' => $waterAccount->account_number,
+                'meter_number' => $waterAccount->meter_number,
+                'connection_address' => $waterAccount->connection_address,
+                'status' => $waterAccount->status->value,
+                'connected_at' => $waterAccount->connected_at?->toDateString(),
+                'owner' => [
+                    'id' => $waterAccount->owner->id,
+                    'name' => $waterAccount->owner->name,
+                    'email' => $waterAccount->owner->email,
+                ],
+            ],
+        ]);
+    }
+
+    /**
+     * Update the given water account.
+     */
+    public function update(UpdateWaterAccountRequest $request, WaterAccount $waterAccount): RedirectResponse
+    {
+        $waterAccount->update($request->validated());
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('Water account updated.')]);
+
+        return to_route('admin.water-accounts.index');
+    }
+
+    /**
+     * Suggest the next account number in the society numbering scheme.
+     */
+    protected function suggestAccountNumber(): string
+    {
+        $lastNumber = WaterAccount::query()
+            ->where('account_number', 'like', 'ACC-%')
+            ->orderByDesc('id')
+            ->value('account_number');
+
+        $next = $lastNumber === null ? 1 : (int) str_replace('ACC-', '', $lastNumber) + 1;
+
+        return 'ACC-'.str_pad((string) $next, 4, '0', STR_PAD_LEFT);
+    }
+}

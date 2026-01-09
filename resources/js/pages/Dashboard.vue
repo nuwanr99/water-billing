@@ -1,47 +1,343 @@
 <script setup lang="ts">
-import { Head } from '@inertiajs/vue3';
-import PlaceholderPattern from '@/components/PlaceholderPattern.vue';
+import { Head, Link, usePage } from '@inertiajs/vue3';
+import {
+  CreditCard,
+  Droplets,
+  FileText,
+  Gauge,
+  MapPin,
+  Receipt,
+} from '@lucide/vue';
+import { computed } from 'vue';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import WaterAccountStatusBadge from '@/components/WaterAccountStatusBadge.vue';
 import { dashboard } from '@/routes';
+import { index as waterAccountsIndex } from '@/routes/water-accounts';
+import type { WaterAccountStatus } from '@/types';
+
+type CurrentAccount = {
+  id: number;
+  account_number: string;
+  meter_number: string;
+  connection_address: string | null;
+  status: WaterAccountStatus;
+  connected_at: string | null;
+};
+
+defineProps<{
+  currentAccount: CurrentAccount | null;
+  activeAccountsCount: number;
+}>();
 
 defineOptions({
-    layout: {
-        breadcrumbs: [
-            {
-                title: 'Dashboard',
-                href: dashboard(),
-            },
-        ],
-    },
+  layout: {
+    breadcrumbs: [
+      {
+        title: 'Dashboard',
+        href: dashboard(),
+      },
+    ],
+  },
 });
+
+const page = usePage();
+const firstName = computed(() => page.props.auth.user.first_name);
+
+/**
+ * Placeholder values shown until the meter reading, billing, and payment
+ * modules land. Widgets rendering these carry a "Sample" badge.
+ */
+const sample = {
+  currentBill: 'Rs. 1,250.00',
+  billDueDate: 'Due 15 Jul 2026',
+  lastReading: '1,254 units',
+  lastReadingDate: 'Read 28 Jun 2026',
+  monthlyUsage: '18 units',
+  usageComparison: '2 units less than last month',
+  usageByMonth: [12, 15, 14, 18, 22, 19, 16, 20, 17, 15, 21, 18],
+  activity: [
+    {
+      icon: Receipt,
+      title: 'June bill generated',
+      description: 'Rs. 1,250.00 · awaiting approval',
+      date: '01 Jul 2026',
+    },
+    {
+      icon: CreditCard,
+      title: 'May bill paid',
+      description: 'Rs. 1,180.00 · paid online',
+      date: '12 Jun 2026',
+    },
+    {
+      icon: Gauge,
+      title: 'Meter reading recorded',
+      description: '1,254 units · normal usage',
+      date: '28 Jun 2026',
+    },
+  ],
+};
+
+const months = [
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+];
+
+const maxUsage = Math.max(...sample.usageByMonth);
 </script>
 
 <template>
-    <Head title="Dashboard" />
+  <Head title="Dashboard" />
+
+  <div class="flex flex-col gap-6 p-4">
+    <div class="flex flex-wrap items-center justify-between gap-4">
+      <div>
+        <h2 class="text-xl font-semibold tracking-tight">
+          Welcome back, {{ firstName }}
+        </h2>
+        <p class="text-sm text-muted-foreground">
+          {{
+            currentAccount
+              ? `Showing account ${currentAccount.account_number}`
+              : 'Your water supply overview'
+          }}
+        </p>
+      </div>
+      <Button variant="outline" as-child>
+        <Link :href="waterAccountsIndex()">
+          <Droplets class="size-4" />
+          My water accounts
+        </Link>
+      </Button>
+    </div>
 
     <div
-        class="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4"
+      v-if="currentAccount === null"
+      class="flex flex-col items-center gap-3 rounded-xl border border-dashed py-16 text-center"
     >
-        <div class="grid auto-rows-min gap-4 md:grid-cols-3">
-            <div
-                class="relative aspect-video overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border"
-            >
-                <PlaceholderPattern />
-            </div>
-            <div
-                class="relative aspect-video overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border"
-            >
-                <PlaceholderPattern />
-            </div>
-            <div
-                class="relative aspect-video overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border"
-            >
-                <PlaceholderPattern />
-            </div>
-        </div>
-        <div
-            class="relative min-h-[100vh] flex-1 rounded-xl border border-sidebar-border/70 md:min-h-min dark:border-sidebar-border"
-        >
-            <PlaceholderPattern />
-        </div>
+      <div
+        class="flex size-12 items-center justify-center rounded-full bg-muted"
+      >
+        <Droplets class="size-6 text-muted-foreground" />
+      </div>
+      <div class="space-y-1">
+        <p class="font-medium">No water accounts yet</p>
+        <p class="max-w-sm text-sm text-muted-foreground">
+          Once the society office registers a water connection under your
+          membership, your bills and usage will appear here.
+        </p>
+      </div>
     </div>
+
+    <template v-else>
+      <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <Card class="gap-2">
+          <CardHeader>
+            <CardDescription class="flex items-center justify-between gap-2">
+              Current bill
+              <Badge variant="secondary">Sample</Badge>
+            </CardDescription>
+            <CardTitle class="text-2xl">
+              {{ sample.currentBill }}
+            </CardTitle>
+          </CardHeader>
+          <CardContent class="text-xs text-muted-foreground">
+            {{ sample.billDueDate }}
+          </CardContent>
+        </Card>
+
+        <Card class="gap-2">
+          <CardHeader>
+            <CardDescription class="flex items-center justify-between gap-2">
+              Last meter reading
+              <Badge variant="secondary">Sample</Badge>
+            </CardDescription>
+            <CardTitle class="text-2xl">
+              {{ sample.lastReading }}
+            </CardTitle>
+          </CardHeader>
+          <CardContent class="text-xs text-muted-foreground">
+            {{ sample.lastReadingDate }}
+          </CardContent>
+        </Card>
+
+        <Card class="gap-2">
+          <CardHeader>
+            <CardDescription class="flex items-center justify-between gap-2">
+              Usage this month
+              <Badge variant="secondary">Sample</Badge>
+            </CardDescription>
+            <CardTitle class="text-2xl">
+              {{ sample.monthlyUsage }}
+            </CardTitle>
+          </CardHeader>
+          <CardContent class="text-xs text-muted-foreground">
+            {{ sample.usageComparison }}
+          </CardContent>
+        </Card>
+
+        <Card class="gap-2">
+          <CardHeader>
+            <CardDescription>Active accounts</CardDescription>
+            <CardTitle class="text-2xl">
+              {{ activeAccountsCount }}
+            </CardTitle>
+          </CardHeader>
+          <CardContent class="text-xs text-muted-foreground">
+            Registered under your membership
+          </CardContent>
+        </Card>
+      </div>
+
+      <div class="grid gap-4 lg:grid-cols-3">
+        <Card class="lg:col-span-2">
+          <CardHeader>
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <CardTitle class="text-base"> Monthly usage </CardTitle>
+                <CardDescription>
+                  Live data arrives with the meter reading module
+                </CardDescription>
+              </div>
+              <Badge variant="secondary">Sample</Badge>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div class="flex h-40 items-end gap-2">
+              <div
+                v-for="(usage, monthIndex) in sample.usageByMonth"
+                :key="monthIndex"
+                class="flex flex-1 flex-col items-center gap-1.5"
+              >
+                <div
+                  class="w-full rounded-sm bg-primary/20"
+                  :class="
+                    monthIndex === sample.usageByMonth.length - 1
+                      ? 'bg-primary/70'
+                      : ''
+                  "
+                  :style="{
+                    height: `${(usage / maxUsage) * 100}%`,
+                  }"
+                />
+                <span class="text-[10px] text-muted-foreground">
+                  {{ months[monthIndex] }}
+                </span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <div class="flex items-center justify-between gap-2">
+              <CardTitle class="text-base"> Account details </CardTitle>
+              <WaterAccountStatusBadge :status="currentAccount.status" />
+            </div>
+          </CardHeader>
+          <CardContent class="space-y-4 text-sm">
+            <div class="flex items-center gap-3">
+              <FileText class="size-4 shrink-0 text-muted-foreground" />
+              <div>
+                <p class="text-xs text-muted-foreground">Account number</p>
+                <p class="font-medium">
+                  {{ currentAccount.account_number }}
+                </p>
+              </div>
+            </div>
+            <div class="flex items-center gap-3">
+              <Gauge class="size-4 shrink-0 text-muted-foreground" />
+              <div>
+                <p class="text-xs text-muted-foreground">Meter number</p>
+                <p class="font-medium">
+                  {{ currentAccount.meter_number }}
+                </p>
+              </div>
+            </div>
+            <div class="flex items-center gap-3">
+              <MapPin class="size-4 shrink-0 text-muted-foreground" />
+              <div>
+                <p class="text-xs text-muted-foreground">Connection address</p>
+                <p class="font-medium">
+                  {{
+                    currentAccount.connection_address ??
+                    'Registered member address'
+                  }}
+                </p>
+              </div>
+            </div>
+            <div class="flex items-center gap-3">
+              <Droplets class="size-4 shrink-0 text-muted-foreground" />
+              <div>
+                <p class="text-xs text-muted-foreground">Connected since</p>
+                <p class="font-medium">
+                  {{ currentAccount.connected_at ?? 'Not recorded' }}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <CardTitle class="text-base"> Recent activity </CardTitle>
+              <CardDescription>
+                Bills, payments, and readings will appear here
+              </CardDescription>
+            </div>
+            <Badge variant="secondary">Sample</Badge>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <ul class="divide-y">
+            <li
+              v-for="item in sample.activity"
+              :key="item.title"
+              class="flex items-center gap-3 py-3 first:pt-0 last:pb-0"
+            >
+              <div
+                class="flex size-9 shrink-0 items-center justify-center rounded-full bg-muted"
+              >
+                <component
+                  :is="item.icon"
+                  class="size-4 text-muted-foreground"
+                />
+              </div>
+              <div class="min-w-0 flex-1">
+                <p class="truncate text-sm font-medium">
+                  {{ item.title }}
+                </p>
+                <p class="truncate text-xs text-muted-foreground">
+                  {{ item.description }}
+                </p>
+              </div>
+              <span class="text-xs text-muted-foreground">
+                {{ item.date }}
+              </span>
+            </li>
+          </ul>
+        </CardContent>
+      </Card>
+    </template>
+  </div>
 </template>

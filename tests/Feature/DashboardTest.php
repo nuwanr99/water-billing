@@ -16,7 +16,7 @@ test('normal users can visit their dashboard', function () {
     $response->assertOk();
 });
 
-test('admins are redirected to the admin dashboard', function () {
+test('admins can also visit the normal dashboard', function () {
     $this->seed(RolePermissionSeeder::class);
 
     $user = User::factory()->create();
@@ -24,7 +24,8 @@ test('admins are redirected to the admin dashboard', function () {
 
     $this->actingAs($user)
         ->get(route('dashboard'))
-        ->assertRedirect(route('admin.dashboard'));
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->component('Dashboard'));
 });
 
 test('the admin dashboard shows stats and recent users', function () {
@@ -39,7 +40,7 @@ test('the admin dashboard shows stats and recent users', function () {
         ->assertInertia(fn ($page) => $page
             ->component('admin/Dashboard')
             ->where('stats.users', 2)
-            ->where('stats.roles', 3)
+            ->where('stats.roles', 4)
             ->has('recentUsers')
         );
 });

@@ -32,6 +32,11 @@ class RolePermissionSeeder extends Seeder
         'permissions' => [
             'permissions.view',
         ],
+        'water-accounts' => [
+            'water-accounts.view',
+            'water-accounts.create',
+            'water-accounts.edit',
+        ],
         'admin' => [
             'admin',
         ],
@@ -58,6 +63,7 @@ class RolePermissionSeeder extends Seeder
         $superAdminRole = Role::firstOrCreate(['name' => 'Super Admin', 'guard_name' => 'web']);
         Role::firstOrCreate(['name' => 'Admin', 'guard_name' => 'web']);
         Role::firstOrCreate(['name' => 'User', 'guard_name' => 'web']);
+        Role::firstOrCreate(['name' => 'Member', 'guard_name' => 'web']);
 
         $superAdminRole->syncPermissions(Permission::all());
 
