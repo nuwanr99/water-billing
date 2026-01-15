@@ -10,3 +10,14 @@ export function cn(...inputs: ClassValue[]) {
 export function toUrl(href: NonNullable<InertiaLinkProps['href']>) {
   return typeof href === 'string' ? href : href?.url;
 }
+
+/**
+ * Meter values (readings, consumption) always display with two decimals,
+ * matching the physical meter's fractional dials.
+ */
+export function formatReading(value: number): string {
+  return value.toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}

@@ -18,6 +18,7 @@ class DashboardController extends Controller
 
         $preferredId = $request->session()->get('current_water_account_id');
         $currentAccount = $user->resolveCurrentWaterAccount(is_int($preferredId) ? $preferredId : null);
+        $latestReading = $currentAccount?->latestReading;
 
         return Inertia::render('Dashboard', [
             'currentAccount' => $currentAccount === null ? null : [
@@ -27,6 +28,11 @@ class DashboardController extends Controller
                 'connection_address' => $currentAccount->connection_address,
                 'status' => $currentAccount->status->value,
                 'connected_at' => $currentAccount->connected_at?->toFormattedDateString(),
+            ],
+            'latestReading' => $latestReading === null ? null : [
+                'value' => (float) $latestReading->reading_value,
+                'consumption' => (float) $latestReading->consumption,
+                'date' => $latestReading->reading_date->toFormattedDateString(),
             ],
             'activeAccountsCount' => $user->waterAccounts
                 ->where('status', WaterAccountStatus::Active)

@@ -22,6 +22,7 @@ class StoreWaterAccountRequest extends FormRequest
             'user_id' => ['required', 'integer', Rule::exists('users', 'id')],
             'account_number' => ['required', 'string', 'max:255', Rule::unique('water_accounts')],
             'meter_number' => ['required', 'string', 'max:255'],
+            'initial_reading' => ['required', 'numeric', 'decimal:0,2', 'min:0'],
             'connection_address' => ['nullable', 'string', 'max:255'],
             'status' => ['required', Rule::enum(WaterAccountStatus::class)],
             'connected_at' => ['nullable', 'date'],

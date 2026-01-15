@@ -21,6 +21,7 @@ type WaterAccountFormData = {
   id: number;
   account_number: string;
   meter_number: string;
+  initial_reading: number;
   connection_address: string | null;
   status: string;
   connected_at: string | null;
@@ -53,6 +54,7 @@ const form = useForm<{
   user_id: number | null;
   account_number: string;
   meter_number: string;
+  initial_reading: number | string;
   connection_address: string;
   status: string;
   connected_at: string;
@@ -61,6 +63,7 @@ const form = useForm<{
   account_number:
     props.waterAccount?.account_number ?? props.suggestedAccountNumber ?? '',
   meter_number: props.waterAccount?.meter_number ?? '',
+  initial_reading: props.waterAccount?.initial_reading ?? 0,
   connection_address: props.waterAccount?.connection_address ?? '',
   status: props.waterAccount?.status ?? 'active',
   connected_at: props.waterAccount?.connected_at ?? '',
@@ -143,6 +146,27 @@ const submit = () => {
         />
         <InputError :message="form.errors.meter_number" />
       </div>
+    </div>
+
+    <div class="grid gap-2">
+      <Label for="initial_reading">Initial meter reading</Label>
+      <Input
+        id="initial_reading"
+        v-model="form.initial_reading"
+        type="number"
+        min="0"
+        step="0.01"
+        required
+        class="max-w-48"
+      />
+      <p class="text-xs text-muted-foreground">
+        {{
+          mode === 'create'
+            ? 'The value on the meter dial when the connection is installed.'
+            : 'Changing the baseline re-derives the first recorded reading’s usage.'
+        }}
+      </p>
+      <InputError :message="form.errors.initial_reading" />
     </div>
 
     <div class="grid gap-2">

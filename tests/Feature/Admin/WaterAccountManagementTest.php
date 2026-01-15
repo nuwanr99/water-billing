@@ -47,6 +47,7 @@ test('a water account can be created for a member', function () {
         'user_id' => $this->member->id,
         'account_number' => 'ACC-9001',
         'meter_number' => 'MTR-900001',
+        'initial_reading' => 1200,
         'connection_address' => '12 Lake Road',
         'status' => 'active',
         'connected_at' => '2026-01-15',
@@ -57,7 +58,8 @@ test('a water account can be created for a member', function () {
     $waterAccount = WaterAccount::where('account_number', 'ACC-9001')->firstOrFail();
 
     expect($waterAccount->owner->is($this->member))->toBeTrue()
-        ->and($waterAccount->meter_number)->toBe('MTR-900001');
+        ->and($waterAccount->meter_number)->toBe('MTR-900001')
+        ->and($waterAccount->initial_reading)->toBe('1200.00');
 });
 
 test('a water account can be updated', function () {
@@ -67,6 +69,7 @@ test('a water account can be updated', function () {
         'user_id' => $this->member->id,
         'account_number' => $waterAccount->account_number,
         'meter_number' => 'MTR-777777',
+        'initial_reading' => $waterAccount->initial_reading,
         'connection_address' => null,
         'status' => 'inactive',
         'connected_at' => null,

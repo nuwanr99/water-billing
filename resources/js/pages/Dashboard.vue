@@ -19,6 +19,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import WaterAccountStatusBadge from '@/components/WaterAccountStatusBadge.vue';
+import { formatReading } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import { index as waterAccountsIndex } from '@/routes/water-accounts';
 import type { WaterAccountStatus } from '@/types';
@@ -34,6 +35,11 @@ type CurrentAccount = {
 
 defineProps<{
   currentAccount: CurrentAccount | null;
+  latestReading: {
+    value: number;
+    consumption: number;
+    date: string;
+  } | null;
   activeAccountsCount: number;
 }>();
 
@@ -58,10 +64,6 @@ const firstName = computed(() => page.props.auth.user.first_name);
 const sample = {
   currentBill: 'Rs. 1,250.00',
   billDueDate: 'Due 15 Jul 2026',
-  lastReading: '1,254 units',
-  lastReadingDate: 'Read 28 Jun 2026',
-  monthlyUsage: '18 units',
-  usageComparison: '2 units less than last month',
   usageByMonth: [12, 15, 14, 18, 22, 19, 16, 20, 17, 15, 21, 18],
   activity: [
     {
@@ -165,31 +167,39 @@ const maxUsage = Math.max(...sample.usageByMonth);
 
         <Card class="gap-2">
           <CardHeader>
-            <CardDescription class="flex items-center justify-between gap-2">
-              Last meter reading
-              <Badge variant="secondary">Sample</Badge>
-            </CardDescription>
+            <CardDescription>Last meter reading</CardDescription>
             <CardTitle class="text-2xl">
-              {{ sample.lastReading }}
+              {{
+                latestReading
+                  ? `${formatReading(latestReading.value)} units`
+                  : '—'
+              }}
             </CardTitle>
           </CardHeader>
           <CardContent class="text-xs text-muted-foreground">
-            {{ sample.lastReadingDate }}
+            {{
+              latestReading ? `Read ${latestReading.date}` : 'No readings yet'
+            }}
           </CardContent>
         </Card>
 
         <Card class="gap-2">
           <CardHeader>
-            <CardDescription class="flex items-center justify-between gap-2">
-              Usage this month
-              <Badge variant="secondary">Sample</Badge>
-            </CardDescription>
+            <CardDescription>Last recorded usage</CardDescription>
             <CardTitle class="text-2xl">
-              {{ sample.monthlyUsage }}
+              {{
+                latestReading
+                  ? `${formatReading(latestReading.consumption)} units`
+                  : '—'
+              }}
             </CardTitle>
           </CardHeader>
           <CardContent class="text-xs text-muted-foreground">
-            {{ sample.usageComparison }}
+            {{
+              latestReading
+                ? 'Since the previous reading'
+                : 'No readings yet'
+            }}
           </CardContent>
         </Card>
 

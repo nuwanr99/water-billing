@@ -8,6 +8,7 @@ type WaterAccountFormData = {
   id: number;
   account_number: string;
   meter_number: string;
+  initial_reading: number;
   connection_address: string | null;
   status: string;
   connected_at: string | null;

@@ -2,9 +2,8 @@
 import { Link, usePage } from '@inertiajs/vue3';
 import {
   ArrowLeftRight,
-  BookOpen,
   Droplets,
-  FolderGit2,
+  Gauge,
   KeyRound,
   LayoutGrid,
   ShieldCheck,
@@ -32,6 +31,7 @@ import { index as permissionsIndex } from '@/routes/admin/permissions';
 import { index as rolesIndex } from '@/routes/admin/roles';
 import { index as usersIndex } from '@/routes/admin/users';
 import { index as adminWaterAccountsIndex } from '@/routes/admin/water-accounts';
+import { index as meterReadingsIndex } from '@/routes/meter-readings';
 import { index as waterAccountsIndex } from '@/routes/water-accounts';
 import type { NavItem } from '@/types';
 
@@ -40,22 +40,34 @@ const { hasPermission } = usePermission();
 const page = usePage();
 const inAdminArea = computed(() => page.url.startsWith('/admin'));
 
-const mainNavItems = computed<NavItem[]>(() =>
-  inAdminArea.value
-    ? []
-    : [
-        {
-          title: 'Dashboard',
-          href: dashboard(),
-          icon: LayoutGrid,
-        },
-        {
-          title: 'My water accounts',
-          href: waterAccountsIndex(),
-          icon: Droplets,
-        },
-      ],
-);
+const mainNavItems = computed<NavItem[]>(() => {
+  if (inAdminArea.value) {
+    return [];
+  }
+
+  const items: NavItem[] = [
+    {
+      title: 'Dashboard',
+      href: dashboard(),
+      icon: LayoutGrid,
+    },
+    {
+      title: 'My water accounts',
+      href: waterAccountsIndex(),
+      icon: Droplets,
+    },
+  ];
+
+  if (hasPermission('readings.view')) {
+    items.push({
+      title: 'Meter readings',
+      href: meterReadingsIndex(),
+      icon: Gauge,
+    });
+  }
+
+  return items;
+});
 
 const adminNavItems = computed<NavItem[]>(() => {
   if (!hasPermission('admin') || !inAdminArea.value) {
@@ -93,18 +105,19 @@ const adminNavItems = computed<NavItem[]>(() => {
   return items;
 });
 
-const footerNavItems: NavItem[] = [
-  {
-    title: 'Repository',
-    href: 'https://github.com/laravel/vue-starter-kit',
-    icon: FolderGit2,
-  },
-  {
-    title: 'Documentation',
-    href: 'https://laravel.com/docs/starter-kits#vue',
-    icon: BookOpen,
-  },
-];
+const footerNavItems = computed<NavItem[]>(() =>
+  hasPermission('admin')
+    ? [
+        {
+          title: inAdminArea.value
+            ? 'Switch to user view'
+            : 'Switch to admin view',
+          href: inAdminArea.value ? dashboard() : adminDashboard(),
+          icon: ArrowLeftRight,
+        },
+      ]
+    : [],
+);
 </script>
 
 <template>
@@ -132,26 +145,7 @@ const footerNavItems: NavItem[] = [
     </SidebarContent>
 
     <SidebarFooter>
-      <SidebarMenu v-if="hasPermission('admin')">
-        <SidebarMenuItem>
-          <SidebarMenuButton
-            as-child
-            :tooltip="
-              inAdminArea ? 'Switch to user view' : 'Switch to admin view'
-            "
-          >
-            <Link :href="inAdminArea ? dashboard() : adminDashboard()">
-              <ArrowLeftRight />
-              <span>
-                {{
-                  inAdminArea ? 'Switch to user view' : 'Switch to admin view'
-                }}
-              </span>
-            </Link>
-          </SidebarMenuButton>
-        </SidebarMenuItem>
-      </SidebarMenu>
-      <NavFooter :items="footerNavItems" />
+      <NavFooter v-if="footerNavItems.length > 0" :items="footerNavItems" />
       <NavUser />
     </SidebarFooter>
   </Sidebar>

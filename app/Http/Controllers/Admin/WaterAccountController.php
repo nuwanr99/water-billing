@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -124,6 +125,7 @@ class WaterAccountController extends Controller
                 'id' => $waterAccount->id,
                 'account_number' => $waterAccount->account_number,
                 'meter_number' => $waterAccount->meter_number,
+                'initial_reading' => (float) $waterAccount->initial_reading,
                 'connection_address' => $waterAccount->connection_address,
                 'status' => $waterAccount->status->value,
                 'connected_at' => $waterAccount->connected_at?->toDateString(),
@@ -138,10 +140,24 @@ class WaterAccountController extends Controller
 
     /**
      * Update the given water account.
+     *
+     * The first recorded reading derives its consumption from the initial
+     * (baseline) reading, so a baseline change re-derives it atomically.
      */
     public function update(UpdateWaterAccountRequest $request, WaterAccount $waterAccount): RedirectResponse
     {
-        $waterAccount->update($request->validated());
+        DB::transaction(function () use ($request, $waterAccount) {
+            $waterAccount->update($request->validated());
+
+            if (! $waterAccount->wasChanged('initial_reading')) {
+                return;
+            }
+
+            $firstReading = $waterAccount->readings()->orderBy('billing_month')->first();
+            $firstReading?->update([
+                'consumption' => round((float) $firstReading->reading_value - (float) $waterAccount->initial_reading, 2),
+            ]);
+        });
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Water account updated.')]);
 

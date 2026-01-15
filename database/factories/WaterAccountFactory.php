@@ -23,6 +23,7 @@ class WaterAccountFactory extends Factory
             'user_id' => User::factory(),
             'account_number' => 'ACC-'.fake()->unique()->numerify('####'),
             'meter_number' => 'MTR-'.fake()->unique()->numerify('######'),
+            'initial_reading' => 0,
             'connection_address' => fake()->optional()->address(),
             'status' => WaterAccountStatus::Active,
             'connected_at' => fake()->dateTimeBetween('-5 years'),
