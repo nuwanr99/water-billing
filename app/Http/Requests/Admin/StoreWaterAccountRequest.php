@@ -20,6 +20,7 @@ class StoreWaterAccountRequest extends FormRequest
     {
         return [
             'user_id' => ['required', 'integer', Rule::exists('users', 'id')],
+            'billing_category_id' => ['required', 'integer', Rule::exists('billing_categories', 'id')],
             'account_number' => ['required', 'string', 'max:255', Rule::unique('water_accounts')],
             'meter_number' => ['required', 'string', 'max:255'],
             'initial_reading' => ['required', 'numeric', 'decimal:0,2', 'min:0'],

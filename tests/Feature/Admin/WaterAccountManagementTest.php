@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\BillingCategory;
 use App\Models\User;
 use App\Models\WaterAccount;
 use Database\Seeders\RolePermissionSeeder;
@@ -43,8 +44,11 @@ test('the water accounts index can be searched by owner name', function () {
 });
 
 test('a water account can be created for a member', function () {
+    $billingCategory = BillingCategory::factory()->create();
+
     $response = $this->actingAs($this->admin)->post(route('admin.water-accounts.store'), [
         'user_id' => $this->member->id,
+        'billing_category_id' => $billingCategory->id,
         'account_number' => 'ACC-9001',
         'meter_number' => 'MTR-900001',
         'initial_reading' => 1200,
@@ -59,7 +63,8 @@ test('a water account can be created for a member', function () {
 
     expect($waterAccount->owner->is($this->member))->toBeTrue()
         ->and($waterAccount->meter_number)->toBe('MTR-900001')
-        ->and($waterAccount->initial_reading)->toBe('1200.00');
+        ->and($waterAccount->initial_reading)->toBe('1200.00')
+        ->and($waterAccount->billingCategory->is($billingCategory))->toBeTrue();
 });
 
 test('a water account can be updated', function () {
@@ -67,6 +72,7 @@ test('a water account can be updated', function () {
 
     $response = $this->actingAs($this->admin)->put(route('admin.water-accounts.update', $waterAccount), [
         'user_id' => $this->member->id,
+        'billing_category_id' => $waterAccount->billing_category_id,
         'account_number' => $waterAccount->account_number,
         'meter_number' => 'MTR-777777',
         'initial_reading' => $waterAccount->initial_reading,

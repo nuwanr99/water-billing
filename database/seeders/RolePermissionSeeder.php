@@ -42,6 +42,10 @@ class RolePermissionSeeder extends Seeder
             'readings.create',
             'readings.edit',
         ],
+        'tariffs' => [
+            'tariffs.view',
+            'tariffs.manage',
+        ],
         'admin' => [
             'admin',
         ],
@@ -72,6 +76,9 @@ class RolePermissionSeeder extends Seeder
 
         $waterControllerRole = Role::firstOrCreate(['name' => 'Water Controller', 'guard_name' => 'web']);
         $waterControllerRole->syncPermissions(['readings.view', 'readings.create', 'readings.edit']);
+
+        $treasurerRole = Role::firstOrCreate(['name' => 'Treasurer', 'guard_name' => 'web']);
+        $treasurerRole->syncPermissions(['admin', 'tariffs.view', 'tariffs.manage']);
 
         $superAdminRole->syncPermissions(Permission::all());
 

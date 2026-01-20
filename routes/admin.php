@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\BillingCategoryController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\PermissionController;
 use App\Http\Controllers\Admin\RoleController;
@@ -37,6 +38,15 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'verified', 'can:adm
         Route::post('/', [WaterAccountController::class, 'store'])->middleware('can:water-accounts.create')->name('store');
         Route::get('/{waterAccount}', [WaterAccountController::class, 'edit'])->middleware('can:water-accounts.edit')->name('edit');
         Route::put('/{waterAccount}', [WaterAccountController::class, 'update'])->middleware('can:water-accounts.edit')->name('update');
+    });
+
+    Route::prefix('billing-categories')->name('billing-categories.')->group(function () {
+        Route::get('/', [BillingCategoryController::class, 'index'])->middleware('can:tariffs.view')->name('index');
+        Route::get('/create', [BillingCategoryController::class, 'create'])->middleware('can:tariffs.manage')->name('create');
+        Route::post('/', [BillingCategoryController::class, 'store'])->middleware('can:tariffs.manage')->name('store');
+        Route::get('/{billingCategory}', [BillingCategoryController::class, 'edit'])->middleware('can:tariffs.manage')->name('edit');
+        Route::put('/{billingCategory}', [BillingCategoryController::class, 'update'])->middleware('can:tariffs.manage')->name('update');
+        Route::delete('/{billingCategory}', [BillingCategoryController::class, 'destroy'])->middleware('can:tariffs.manage')->name('destroy');
     });
 
     Route::get('/permissions', [PermissionController::class, 'index'])->middleware('can:permissions.view')->name('permissions.index');

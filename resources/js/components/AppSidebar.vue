@@ -6,6 +6,7 @@ import {
   Gauge,
   KeyRound,
   LayoutGrid,
+  ReceiptText,
   ShieldCheck,
   Users,
 } from '@lucide/vue';
@@ -27,6 +28,7 @@ import {
 import { usePermission } from '@/composables/usePermission';
 import { dashboard } from '@/routes';
 import { dashboard as adminDashboard } from '@/routes/admin';
+import { index as billingCategoriesIndex } from '@/routes/admin/billing-categories';
 import { index as permissionsIndex } from '@/routes/admin/permissions';
 import { index as rolesIndex } from '@/routes/admin/roles';
 import { index as usersIndex } from '@/routes/admin/users';
@@ -87,6 +89,14 @@ const adminNavItems = computed<NavItem[]>(() => {
       title: 'Water accounts',
       href: adminWaterAccountsIndex(),
       icon: Droplets,
+    });
+  }
+
+  if (hasPermission('tariffs.view')) {
+    items.push({
+      title: 'Billing categories',
+      href: billingCategoriesIndex(),
+      icon: ReceiptText,
     });
   }
 

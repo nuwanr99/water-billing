@@ -19,6 +19,7 @@ import type { ComboboxOption } from '@/types';
 
 type WaterAccountFormData = {
   id: number;
+  billing_category_id: number | null;
   account_number: string;
   meter_number: string;
   initial_reading: number;
@@ -38,6 +39,7 @@ const props = defineProps<{
   mode: 'create' | 'edit';
   waterAccount?: WaterAccountFormData;
   suggestedAccountNumber?: string;
+  billingCategories: { id: number; name: string }[];
 }>();
 
 const selectedOwner = ref<ComboboxOption | null>(
@@ -52,6 +54,7 @@ const selectedOwner = ref<ComboboxOption | null>(
 
 const form = useForm<{
   user_id: number | null;
+  billing_category_id: string;
   account_number: string;
   meter_number: string;
   initial_reading: number | string;
@@ -60,6 +63,8 @@ const form = useForm<{
   connected_at: string;
 }>({
   user_id: props.waterAccount?.owner.id ?? null,
+  billing_category_id:
+    props.waterAccount?.billing_category_id?.toString() ?? '',
   account_number:
     props.waterAccount?.account_number ?? props.suggestedAccountNumber ?? '',
   meter_number: props.waterAccount?.meter_number ?? '',
@@ -122,6 +127,29 @@ const submit = () => {
         empty-text="No members found."
       />
       <InputError :message="form.errors.user_id" />
+    </div>
+
+    <div class="grid gap-2">
+      <Label for="billing_category">Billing category</Label>
+      <Select v-model="form.billing_category_id">
+        <SelectTrigger id="billing_category" class="w-full">
+          <SelectValue placeholder="Select a billing category" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem
+            v-for="billingCategory in billingCategories"
+            :key="billingCategory.id"
+            :value="billingCategory.id.toString()"
+          >
+            {{ billingCategory.name }}
+          </SelectItem>
+        </SelectContent>
+      </Select>
+      <p class="text-xs text-muted-foreground">
+        Determines the tariff slabs and service charge the account is billed
+        under.
+      </p>
+      <InputError :message="form.errors.billing_category_id" />
     </div>
 
     <div class="grid gap-6 sm:grid-cols-2">

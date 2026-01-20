@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreWaterAccountRequest;
 use App\Http\Requests\Admin\UpdateWaterAccountRequest;
 use App\Libraries\Datatable;
+use App\Models\BillingCategory;
 use App\Models\User;
 use App\Models\WaterAccount;
 use Illuminate\Database\Eloquent\Builder;
@@ -41,7 +42,7 @@ class WaterAccountController extends Controller
         );
 
         $waterAccounts = $datatable
-            ->paginate(WaterAccount::query()->with('owner:id,first_name,last_name'))
+            ->paginate(WaterAccount::query()->with(['owner:id,first_name,last_name', 'billingCategory:id,name']))
             ->through(fn (WaterAccount $waterAccount): array => [
                 'id' => $waterAccount->id,
                 'account_number' => $waterAccount->account_number,
@@ -50,6 +51,7 @@ class WaterAccountController extends Controller
                     'id' => $waterAccount->owner->id,
                     'name' => $waterAccount->owner->name,
                 ],
+                'billing_category' => $waterAccount->billingCategory?->name,
                 'status' => $waterAccount->status->value,
                 'connected_at' => $waterAccount->connected_at?->toFormattedDateString(),
                 'created_at' => $waterAccount->created_at?->toFormattedDateString(),
@@ -98,6 +100,7 @@ class WaterAccountController extends Controller
     {
         return Inertia::render('admin/water-accounts/Create', [
             'suggestedAccountNumber' => $this->suggestAccountNumber(),
+            'billingCategories' => $this->billingCategoryOptions(),
         ]);
     }
 
@@ -121,8 +124,10 @@ class WaterAccountController extends Controller
         $waterAccount->load('owner:id,first_name,last_name,email');
 
         return Inertia::render('admin/water-accounts/Edit', [
+            'billingCategories' => $this->billingCategoryOptions($waterAccount->billing_category_id),
             'waterAccount' => [
                 'id' => $waterAccount->id,
+                'billing_category_id' => $waterAccount->billing_category_id,
                 'account_number' => $waterAccount->account_number,
                 'meter_number' => $waterAccount->meter_number,
                 'initial_reading' => (float) $waterAccount->initial_reading,
@@ -162,6 +167,27 @@ class WaterAccountController extends Controller
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Water account updated.')]);
 
         return to_route('admin.water-accounts.index');
+    }
+
+    /**
+     * The billing categories selectable on the account form: active ones,
+     * plus the account's current category even when deactivated.
+     *
+     * @return array<int, array{id: int, name: string}>
+     */
+    protected function billingCategoryOptions(?int $currentId = null): array
+    {
+        return BillingCategory::query()
+            ->where('is_active', true)
+            ->when($currentId !== null, fn (Builder $query) => $query->orWhere('id', $currentId))
+            ->orderBy('name')
+            ->get(['id', 'name'])
+            ->map(fn (BillingCategory $billingCategory): array => [
+                'id' => $billingCategory->id,
+                'name' => $billingCategory->name,
+            ])
+            ->values()
+            ->all();
     }
 
     /**

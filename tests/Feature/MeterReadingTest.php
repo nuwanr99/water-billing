@@ -172,6 +172,7 @@ test('an admin updating the initial reading re-derives the first reading', funct
     $this->actingAs($admin)
         ->put(route('admin.water-accounts.update', $account), [
             'user_id' => $member->id,
+            'billing_category_id' => $account->billing_category_id,
             'account_number' => $account->account_number,
             'meter_number' => $account->meter_number,
             'initial_reading' => 120.25,

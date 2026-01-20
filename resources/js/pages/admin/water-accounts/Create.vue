@@ -6,6 +6,7 @@ import { create, index } from '@/routes/admin/water-accounts';
 
 defineProps<{
   suggestedAccountNumber: string;
+  billingCategories: { id: number; name: string }[];
 }>();
 
 defineOptions({
@@ -37,6 +38,7 @@ defineOptions({
     <WaterAccountForm
       mode="create"
       :suggested-account-number="suggestedAccountNumber"
+      :billing-categories="billingCategories"
     />
   </div>
 </template>

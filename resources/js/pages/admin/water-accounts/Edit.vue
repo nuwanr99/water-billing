@@ -6,6 +6,7 @@ import { index } from '@/routes/admin/water-accounts';
 
 type WaterAccountFormData = {
   id: number;
+  billing_category_id: number | null;
   account_number: string;
   meter_number: string;
   initial_reading: number;
@@ -17,6 +18,7 @@ type WaterAccountFormData = {
 
 defineProps<{
   waterAccount: WaterAccountFormData;
+  billingCategories: { id: number; name: string }[];
 }>();
 
 defineOptions({
@@ -45,6 +47,10 @@ defineOptions({
       description="Update the water connection details or its owner"
     />
 
-    <WaterAccountForm mode="edit" :water-account="waterAccount" />
+    <WaterAccountForm
+      mode="edit"
+      :water-account="waterAccount"
+      :billing-categories="billingCategories"
+    />
   </div>
 </template>

@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Enums\WaterAccountStatus;
+use App\Models\BillingCategory;
 use App\Models\User;
 use App\Models\WaterAccount;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -21,6 +22,7 @@ class WaterAccountFactory extends Factory
     {
         return [
             'user_id' => User::factory(),
+            'billing_category_id' => BillingCategory::factory(),
             'account_number' => 'ACC-'.fake()->unique()->numerify('####'),
             'meter_number' => 'MTR-'.fake()->unique()->numerify('######'),
             'initial_reading' => 0,

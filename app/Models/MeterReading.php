@@ -79,7 +79,7 @@ class MeterReading extends Model
      */
     public function previousValue(): float
     {
-        return (float) ($this->previousReading()?->reading_value
+        return (float) ($this->previousReading()->reading_value
             ?? $this->waterAccount->initial_reading);
     }
 }

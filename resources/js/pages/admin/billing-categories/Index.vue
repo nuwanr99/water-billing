@@ -5,6 +5,7 @@ import SearchFilter from '@/components/admin/SearchFilter.vue';
 import SortableHead from '@/components/admin/SortableHead.vue';
 import Heading from '@/components/Heading.vue';
 import Pagination from '@/components/Pagination.vue';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Table,
@@ -15,25 +16,23 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import WaterAccountStatusBadge from '@/components/WaterAccountStatusBadge.vue';
 import { useDatatable } from '@/composables/useDatatable';
 import { usePermission } from '@/composables/usePermission';
-import { create, edit, index } from '@/routes/admin/water-accounts';
-import type { DatatableFilters, Paginated, WaterAccountStatus } from '@/types';
+import { create, edit, index } from '@/routes/admin/billing-categories';
+import type { DatatableFilters, Paginated } from '@/types';
 
-type WaterAccountRow = {
+type BillingCategoryRow = {
   id: number;
-  account_number: string;
-  meter_number: string;
-  owner: { id: number; name: string };
-  billing_category: string | null;
-  status: WaterAccountStatus;
-  connected_at: string | null;
-  created_at: string | null;
+  name: string;
+  description: string | null;
+  late_fee_percent: number;
+  is_active: boolean;
+  tiers_count: number;
+  water_accounts_count: number;
 };
 
 const props = defineProps<{
-  waterAccounts: Paginated<WaterAccountRow>;
+  billingCategories: Paginated<BillingCategoryRow>;
   filters: DatatableFilters;
 }>();
 
@@ -41,7 +40,7 @@ defineOptions({
   layout: {
     breadcrumbs: [
       {
-        title: 'Water accounts',
+        title: 'Billing categories',
         href: index(),
       },
     ],
@@ -56,65 +55,55 @@ const { search, sort, direction, sortBy } = useDatatable(
 </script>
 
 <template>
-  <Head title="Water accounts" />
+  <Head title="Billing categories" />
 
   <div class="flex flex-col gap-6 p-4">
     <div class="flex flex-wrap items-center justify-between gap-4">
       <Heading
         variant="small"
-        title="Water accounts"
-        description="Manage water connections and their owners"
+        title="Billing categories"
+        description="Tariff categories and their consumption slabs"
       />
-      <Button v-if="hasPermission('water-accounts.create')" as-child>
+      <Button v-if="hasPermission('tariffs.manage')" as-child>
         <Link :href="create()">
           <Plus class="size-4" />
-          New water account
+          New billing category
         </Link>
       </Button>
     </div>
 
-    <SearchFilter
-      v-model="search"
-      placeholder="Search by account, meter, or owner..."
-    />
+    <SearchFilter v-model="search" placeholder="Search by name..." />
 
     <div class="rounded-xl border">
       <Table>
         <TableHeader>
           <TableRow>
             <SortableHead
-              column="account_number"
+              column="name"
               :sort="sort"
               :direction="direction"
               @sort="sortBy"
             >
-              Account
+              Name
             </SortableHead>
+            <TableHead>Description</TableHead>
             <SortableHead
-              column="owner"
+              column="late_fee_percent"
               :sort="sort"
               :direction="direction"
               @sort="sortBy"
             >
-              Owner
+              Late fee
             </SortableHead>
-            <TableHead>Meter</TableHead>
-            <TableHead>Category</TableHead>
+            <TableHead>Slabs</TableHead>
+            <TableHead>Accounts</TableHead>
             <SortableHead
-              column="status"
+              column="is_active"
               :sort="sort"
               :direction="direction"
               @sort="sortBy"
             >
               Status
-            </SortableHead>
-            <SortableHead
-              column="connected_at"
-              :sort="sort"
-              :direction="direction"
-              @sort="sortBy"
-            >
-              Connected
             </SortableHead>
             <TableHead class="w-0">
               <span class="sr-only">Actions</span>
@@ -123,43 +112,47 @@ const { search, sort, direction, sortBy } = useDatatable(
         </TableHeader>
         <TableBody>
           <TableRow
-            v-for="waterAccount in waterAccounts.data"
-            :key="waterAccount.id"
+            v-for="billingCategory in billingCategories.data"
+            :key="billingCategory.id"
           >
             <TableCell class="font-medium">
-              {{ waterAccount.account_number }}
+              {{ billingCategory.name }}
             </TableCell>
-            <TableCell>{{ waterAccount.owner.name }}</TableCell>
-            <TableCell class="text-muted-foreground">
-              {{ waterAccount.meter_number }}
+            <TableCell class="max-w-64 truncate text-muted-foreground">
+              {{ billingCategory.description ?? '—' }}
             </TableCell>
-            <TableCell class="text-muted-foreground">
-              {{ waterAccount.billing_category ?? '—' }}
+            <TableCell class="tabular-nums">
+              {{ billingCategory.late_fee_percent.toFixed(2) }}%
+            </TableCell>
+            <TableCell class="tabular-nums">
+              {{ billingCategory.tiers_count }}
+            </TableCell>
+            <TableCell class="tabular-nums">
+              {{ billingCategory.water_accounts_count }}
             </TableCell>
             <TableCell>
-              <WaterAccountStatusBadge :status="waterAccount.status" />
-            </TableCell>
-            <TableCell class="text-muted-foreground">
-              {{ waterAccount.connected_at ?? '—' }}
+              <Badge :variant="billingCategory.is_active ? 'default' : 'secondary'">
+                {{ billingCategory.is_active ? 'Active' : 'Inactive' }}
+              </Badge>
             </TableCell>
             <TableCell>
               <Button
-                v-if="hasPermission('water-accounts.edit')"
+                v-if="hasPermission('tariffs.manage')"
                 variant="outline"
                 size="sm"
                 as-child
               >
-                <Link :href="edit(waterAccount.id)"> Edit </Link>
+                <Link :href="edit(billingCategory.id)"> Edit </Link>
               </Button>
             </TableCell>
           </TableRow>
-          <TableEmpty v-if="waterAccounts.data.length === 0" :colspan="7">
-            No water accounts found.
+          <TableEmpty v-if="billingCategories.data.length === 0" :colspan="7">
+            No billing categories found.
           </TableEmpty>
         </TableBody>
       </Table>
     </div>
 
-    <Pagination :paginator="waterAccounts" />
+    <Pagination :paginator="billingCategories" />
   </div>
 </template>

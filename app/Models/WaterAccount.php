@@ -16,6 +16,7 @@ use Illuminate\Support\Carbon;
 /**
  * @property int $id
  * @property int $user_id
+ * @property int|null $billing_category_id
  * @property string $account_number
  * @property string $meter_number
  * @property numeric-string $initial_reading
@@ -25,10 +26,11 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property-read User $owner
+ * @property-read BillingCategory|null $billingCategory
  * @property-read Collection<int, MeterReading> $readings
  * @property-read MeterReading|null $latestReading
  */
-#[Fillable(['user_id', 'account_number', 'meter_number', 'initial_reading', 'connection_address', 'status', 'connected_at'])]
+#[Fillable(['user_id', 'billing_category_id', 'account_number', 'meter_number', 'initial_reading', 'connection_address', 'status', 'connected_at'])]
 class WaterAccount extends Model
 {
     /** @use HasFactory<WaterAccountFactory> */
@@ -68,6 +70,16 @@ class WaterAccount extends Model
     }
 
     /**
+     * Get the billing category whose tariff applies to the account.
+     *
+     * @return BelongsTo<BillingCategory, $this>
+     */
+    public function billingCategory(): BelongsTo
+    {
+        return $this->belongsTo(BillingCategory::class);
+    }
+
+    /**
      * Get the meter readings recorded for the account.
      *
      * @return HasMany<MeterReading, $this>
@@ -93,6 +105,6 @@ class WaterAccount extends Model
      */
     public function previousMeterValue(): float
     {
-        return (float) ($this->latestReading?->reading_value ?? $this->initial_reading);
+        return (float) ($this->latestReading->reading_value ?? $this->initial_reading);
     }
 }
