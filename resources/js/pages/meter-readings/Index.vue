@@ -5,17 +5,24 @@ import {
   CircleCheck,
   FileText,
   Gauge,
+  ReceiptText,
   SearchX,
 } from '@lucide/vue';
 import { watchDebounced } from '@vueuse/core';
 import { computed, ref } from 'vue';
 import SearchFilter from '@/components/admin/SearchFilter.vue';
 import { formatReading } from '@/lib/utils';
+import { preview, show } from '@/routes/bills';
 import { create, history, index } from '@/routes/meter-readings';
 import type { MeterReadingAccountCard, MeterReadingProgress } from '@/types';
 
+type AccountCard = MeterReadingAccountCard & {
+  billed_this_month: boolean;
+  current_bill_id: number | null;
+};
+
 const props = defineProps<{
-  accounts: MeterReadingAccountCard[];
+  accounts: AccountCard[];
   progress: MeterReadingProgress;
   monthLabel: string;
   filters: { search: string | null };
@@ -92,56 +99,94 @@ const progressPercent = computed(() =>
 
     <ul v-else class="flex flex-col gap-3">
       <li v-for="account in accounts" :key="account.id">
-        <Link
-          :href="
-            account.read_this_month
-              ? history(account.id).url
-              : create(account.id).url
-          "
-          class="flex items-center gap-3 rounded-2xl border bg-card p-4 transition-[background-color,transform] select-none hover:bg-accent/50 active:scale-[0.99] active:bg-accent/50"
-        >
-          <div class="flex min-w-0 flex-1 flex-col gap-1.5">
-            <p class="truncate font-semibold">{{ account.owner_name }}</p>
-            <div
-              class="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground"
-            >
-              <span class="flex items-center gap-1.5">
-                <FileText class="size-3.5 shrink-0" />
-                {{ account.account_number }}
-              </span>
-              <span class="flex items-center gap-1.5">
-                <Gauge class="size-3.5 shrink-0" />
-                {{ account.meter_number }}
-              </span>
+        <div class="overflow-hidden rounded-2xl border bg-card">
+          <Link
+            :href="
+              account.read_this_month
+                ? history(account.id).url
+                : create(account.id).url
+            "
+            class="flex items-center gap-3 p-4 transition-[background-color,transform] select-none hover:bg-accent/50 active:scale-[0.99] active:bg-accent/50"
+          >
+            <div class="flex min-w-0 flex-1 flex-col gap-1.5">
+              <p class="truncate font-semibold">{{ account.owner_name }}</p>
+              <div
+                class="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground"
+              >
+                <span class="flex items-center gap-1.5">
+                  <FileText class="size-3.5 shrink-0" />
+                  {{ account.account_number }}
+                </span>
+                <span class="flex items-center gap-1.5">
+                  <Gauge class="size-3.5 shrink-0" />
+                  {{ account.meter_number }}
+                </span>
+              </div>
             </div>
-          </div>
 
-          <div class="flex shrink-0 items-center gap-2">
-            <div v-if="account.read_this_month" class="text-right">
-              <p
-                class="flex items-center justify-end gap-1 text-sm font-medium text-emerald-600 dark:text-emerald-400"
-              >
-                <CircleCheck class="size-4" />
-                {{ formatReading(account.latest_reading?.value ?? 0) }}
-              </p>
-              <p class="text-xs text-muted-foreground">Recorded</p>
+            <div class="flex shrink-0 items-center gap-2">
+              <div v-if="account.read_this_month" class="text-right">
+                <p
+                  class="flex items-center justify-end gap-1 text-sm font-medium text-emerald-600 dark:text-emerald-400"
+                >
+                  <CircleCheck class="size-4" />
+                  {{ formatReading(account.latest_reading?.value ?? 0) }}
+                </p>
+                <p class="mt-1 flex justify-end">
+                  <span
+                    v-if="account.billed_this_month"
+                    class="rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-600 dark:text-emerald-400"
+                  >
+                    Billed
+                  </span>
+                  <span
+                    v-else
+                    class="rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400"
+                  >
+                    Unbilled
+                  </span>
+                </p>
+              </div>
+              <div v-else class="text-right">
+                <p
+                  class="rounded-full bg-primary px-3 py-1 text-xs font-medium text-primary-foreground"
+                >
+                  Enter reading
+                </p>
+                <p
+                  v-if="account.latest_reading"
+                  class="mt-1 text-xs text-muted-foreground tabular-nums"
+                >
+                  Last {{ formatReading(account.latest_reading.value) }}
+                </p>
+              </div>
+              <ChevronRight class="size-4 text-muted-foreground" />
             </div>
-            <div v-else class="text-right">
-              <p
-                class="rounded-full bg-primary px-3 py-1 text-xs font-medium text-primary-foreground"
-              >
-                Enter reading
-              </p>
-              <p
-                v-if="account.latest_reading"
-                class="mt-1 text-xs text-muted-foreground tabular-nums"
-              >
-                Last {{ formatReading(account.latest_reading.value) }}
-              </p>
-            </div>
-            <ChevronRight class="size-4 text-muted-foreground" />
-          </div>
-        </Link>
+          </Link>
+
+          <Link
+            v-if="
+              account.read_this_month &&
+              !account.billed_this_month &&
+              account.current_reading_id !== null
+            "
+            :href="preview(account.current_reading_id).url"
+            class="flex items-center justify-center gap-1.5 border-t px-4 py-2.5 text-sm font-semibold text-amber-600 transition-colors select-none hover:bg-amber-500/10 active:bg-amber-500/10 dark:text-amber-400"
+          >
+            <ReceiptText class="size-4" />
+            Generate bill
+          </Link>
+          <Link
+            v-else-if="
+              account.billed_this_month && account.current_bill_id !== null
+            "
+            :href="show(account.current_bill_id).url"
+            class="flex items-center justify-center gap-1.5 border-t px-4 py-2.5 text-sm font-medium text-muted-foreground transition-colors select-none hover:bg-accent/50 active:bg-accent/50"
+          >
+            <ReceiptText class="size-4" />
+            View bill
+          </Link>
+        </div>
       </li>
     </ul>
   </div>

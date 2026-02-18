@@ -4,9 +4,11 @@ namespace App\Models;
 
 use Database\Factories\MeterReadingFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 
 /**
@@ -21,6 +23,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $updated_at
  * @property-read WaterAccount $waterAccount
  * @property-read User $recorder
+ * @property-read Collection<int, Bill> $bills
  */
 #[Fillable(['water_account_id', 'recorded_by', 'billing_month', 'reading_value', 'consumption', 'reading_date'])]
 class MeterReading extends Model
@@ -60,6 +63,25 @@ class MeterReading extends Model
     public function recorder(): BelongsTo
     {
         return $this->belongsTo(User::class, 'recorded_by');
+    }
+
+    /**
+     * Get the bills based on this reading (a reissue shares the original's).
+     *
+     * @return HasMany<Bill, $this>
+     */
+    public function bills(): HasMany
+    {
+        return $this->hasMany(Bill::class);
+    }
+
+    /**
+     * Whether a current bill references this reading — once billed, the
+     * reading is locked and corrections go through reissue (D-22).
+     */
+    public function isBilled(): bool
+    {
+        return $this->bills()->where('is_current', true)->exists();
     }
 
     /**

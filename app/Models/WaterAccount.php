@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\WaterAccountStatus;
 use Database\Factories\WaterAccountFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -29,6 +30,10 @@ use Illuminate\Support\Carbon;
  * @property-read BillingCategory|null $billingCategory
  * @property-read Collection<int, MeterReading> $readings
  * @property-read MeterReading|null $latestReading
+ * @property-read Collection<int, AccountLedgerEntry> $ledgerEntries
+ * @property-read WaterAccountBalance|null $balanceRecord
+ * @property-read Collection<int, Bill> $bills
+ * @property-read Bill|null $latestCurrentBill
  */
 #[Fillable(['user_id', 'billing_category_id', 'account_number', 'meter_number', 'initial_reading', 'connection_address', 'status', 'connected_at'])]
 class WaterAccount extends Model
@@ -97,6 +102,50 @@ class WaterAccount extends Model
     public function latestReading(): HasOne
     {
         return $this->hasOne(MeterReading::class)->ofMany('billing_month', 'max');
+    }
+
+    /**
+     * Get the account's ledger statement in posting order.
+     *
+     * @return HasMany<AccountLedgerEntry, $this>
+     */
+    public function ledgerEntries(): HasMany
+    {
+        return $this->hasMany(AccountLedgerEntry::class)->orderBy('id');
+    }
+
+    /**
+     * Get the account's cached ledger balance row.
+     *
+     * @return HasOne<WaterAccountBalance, $this>
+     */
+    public function balanceRecord(): HasOne
+    {
+        return $this->hasOne(WaterAccountBalance::class);
+    }
+
+    /**
+     * Get the bills issued for the account.
+     *
+     * @return HasMany<Bill, $this>
+     */
+    public function bills(): HasMany
+    {
+        return $this->hasMany(Bill::class);
+    }
+
+    /**
+     * Get the newest current (non-superseded) bill — its water_charge entry
+     * is the cutoff the next bill presents entries from (D-25).
+     *
+     * @return HasOne<Bill, $this>
+     */
+    public function latestCurrentBill(): HasOne
+    {
+        return $this->hasOne(Bill::class)->ofMany(
+            ['account_ledger_entry_id' => 'max'],
+            fn (Builder $query) => $query->where('is_current', true),
+        );
     }
 
     /**

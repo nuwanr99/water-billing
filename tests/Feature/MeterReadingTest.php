@@ -49,7 +49,7 @@ test('the first reading derives consumption from the initial reading', function 
     $this->actingAs($this->waterController)
         ->post(route('meter-readings.store', $account), ['reading_value' => 1235.75])
         ->assertSessionHasNoErrors()
-        ->assertRedirect(route('meter-readings.index'));
+        ->assertRedirect(route('bills.preview', MeterReading::first()));
 
     $this->assertDatabaseHas('meter_readings', [
         'water_account_id' => $account->id,

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\BillController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\MeterReadingController;
 use App\Http\Controllers\WaterAccountController;
@@ -20,6 +21,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('{waterAccount}/history', [MeterReadingController::class, 'history'])->name('history')->middleware('can:readings.view');
         Route::get('reading/{meterReading}/edit', [MeterReadingController::class, 'edit'])->name('edit')->middleware('can:readings.edit');
         Route::put('reading/{meterReading}', [MeterReadingController::class, 'update'])->name('update')->middleware('can:readings.edit');
+    });
+
+    Route::prefix('bills')->name('bills.')->group(function () {
+        Route::get('preview/{meterReading}', [BillController::class, 'preview'])->name('preview')->middleware('can:bills.generate');
+        Route::post('preview/{meterReading}', [BillController::class, 'store'])->name('store')->middleware('can:bills.generate');
+        Route::get('{bill}', [BillController::class, 'show'])->name('show')->middleware('can:bills.view');
     });
 });
 

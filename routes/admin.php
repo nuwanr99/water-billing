@@ -1,6 +1,8 @@
 <?php
 
+use App\Http\Controllers\Admin\BillController;
 use App\Http\Controllers\Admin\BillingCategoryController;
+use App\Http\Controllers\Admin\ChargeController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\PermissionController;
 use App\Http\Controllers\Admin\RoleController;
@@ -36,9 +38,20 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'verified', 'can:adm
         Route::get('/create', [WaterAccountController::class, 'create'])->middleware('can:water-accounts.create')->name('create');
         Route::get('/owners', [WaterAccountController::class, 'owners'])->middleware('can:water-accounts.view')->name('owners');
         Route::post('/', [WaterAccountController::class, 'store'])->middleware('can:water-accounts.create')->name('store');
+        Route::get('/{waterAccount}/statement', [WaterAccountController::class, 'statement'])->middleware('can:ledger.view')->name('statement');
+        Route::get('/{waterAccount}/charges/create', [ChargeController::class, 'create'])->middleware('can:ledger.record-charge')->name('charges.create');
+        Route::post('/{waterAccount}/charges', [ChargeController::class, 'store'])->middleware('can:ledger.record-charge')->name('charges.store');
         Route::get('/{waterAccount}', [WaterAccountController::class, 'edit'])->middleware('can:water-accounts.edit')->name('edit');
         Route::put('/{waterAccount}', [WaterAccountController::class, 'update'])->middleware('can:water-accounts.edit')->name('update');
     });
+
+    Route::prefix('bills')->name('bills.')->group(function () {
+        Route::get('/', [BillController::class, 'index'])->middleware('can:bills.view')->name('index');
+        Route::get('/{bill}', [BillController::class, 'show'])->middleware('can:bills.view')->name('show');
+        Route::post('/{bill}/reissue', [BillController::class, 'reissue'])->middleware('can:bills.reissue')->name('reissue');
+    });
+
+    Route::get('/charges/{accountLedgerEntry}/print', [ChargeController::class, 'print'])->middleware('can:ledger.view')->name('charges.print');
 
     Route::prefix('billing-categories')->name('billing-categories.')->group(function () {
         Route::get('/', [BillingCategoryController::class, 'index'])->middleware('can:tariffs.view')->name('index');

@@ -30,7 +30,7 @@ class MeterReadingController extends Controller
         $activeAccounts = WaterAccount::query()->where('status', WaterAccountStatus::Active);
 
         $accounts = (clone $activeAccounts)
-            ->with(['owner:id,first_name,last_name', 'latestReading'])
+            ->with(['owner:id,first_name,last_name', 'latestReading.bills' => fn ($query) => $query->where('is_current', true)])
             ->when($search !== '', function (Builder $query) use ($search) {
                 $term = "%{$search}%";
 
@@ -46,6 +46,7 @@ class MeterReadingController extends Controller
             ->map(function (WaterAccount $waterAccount) use ($currentMonth): array {
                 $latest = $waterAccount->latestReading;
                 $readThisMonth = $latest?->billing_month === $currentMonth;
+                $currentBill = $readThisMonth ? $latest->bills->firstWhere('is_current', true) : null;
 
                 return [
                     ...$this->accountSummary($waterAccount),
@@ -55,6 +56,8 @@ class MeterReadingController extends Controller
                     ],
                     'read_this_month' => $readThisMonth,
                     'current_reading_id' => $readThisMonth ? $latest->id : null,
+                    'billed_this_month' => $currentBill !== null,
+                    'current_bill_id' => $currentBill?->id,
                 ];
             });
 
@@ -100,7 +103,7 @@ class MeterReadingController extends Controller
     {
         $consumption = round($request->float('reading_value') - $waterAccount->previousMeterValue(), 2);
 
-        $waterAccount->readings()->create([
+        $reading = $waterAccount->readings()->create([
             'recorded_by' => $request->user()->id,
             'billing_month' => now()->format('Y-m'),
             'reading_value' => $request->float('reading_value'),
@@ -116,7 +119,9 @@ class MeterReadingController extends Controller
             ]),
         ]);
 
-        return to_route('meter-readings.index');
+        return $request->user()->can('bills.generate')
+            ? to_route('bills.preview', $reading)
+            : to_route('meter-readings.index');
     }
 
     /**
@@ -155,6 +160,7 @@ class MeterReadingController extends Controller
         $waterAccount = $meterReading->waterAccount;
 
         abort_unless($meterReading->id === $waterAccount->latestReading?->id, 404);
+        abort_if($meterReading->isBilled(), 403, __('This reading is billed. Correct it by reissuing the bill.'));
 
         $previousReading = $meterReading->previousReading();
 
@@ -179,6 +185,7 @@ class MeterReadingController extends Controller
         $waterAccount = $meterReading->waterAccount;
 
         abort_unless($meterReading->id === $waterAccount->latestReading?->id, 404);
+        abort_if($meterReading->isBilled(), 403, __('This reading is billed. Correct it by reissuing the bill.'));
 
         $meterReading->update([
             'reading_value' => $request->float('reading_value'),

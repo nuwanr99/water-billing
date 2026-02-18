@@ -6,6 +6,7 @@ import {
   Gauge,
   KeyRound,
   LayoutGrid,
+  Receipt,
   ReceiptText,
   ShieldCheck,
   Users,
@@ -29,6 +30,7 @@ import { usePermission } from '@/composables/usePermission';
 import { dashboard } from '@/routes';
 import { dashboard as adminDashboard } from '@/routes/admin';
 import { index as billingCategoriesIndex } from '@/routes/admin/billing-categories';
+import { index as adminBillsIndex } from '@/routes/admin/bills';
 import { index as permissionsIndex } from '@/routes/admin/permissions';
 import { index as rolesIndex } from '@/routes/admin/roles';
 import { index as usersIndex } from '@/routes/admin/users';
@@ -98,6 +100,10 @@ const adminNavItems = computed<NavItem[]>(() => {
       href: billingCategoriesIndex(),
       icon: ReceiptText,
     });
+  }
+
+  if (hasPermission('bills.view')) {
+    items.push({ title: 'Bills', href: adminBillsIndex(), icon: Receipt });
   }
 
   if (hasPermission('roles.view')) {

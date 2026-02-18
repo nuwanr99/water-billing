@@ -6,9 +6,11 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreWaterAccountRequest;
 use App\Http\Requests\Admin\UpdateWaterAccountRequest;
 use App\Libraries\Datatable;
+use App\Models\AccountLedgerEntry;
 use App\Models\BillingCategory;
 use App\Models\User;
 use App\Models\WaterAccount;
+use App\Services\AccountLedgerService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -91,6 +93,43 @@ class WaterAccountController extends Controller
             ]);
 
         return response()->json($owners);
+    }
+
+    /**
+     * Show the account's ledger statement: every financial event in posting
+     * order with running balances (D-16). Append-only — display only.
+     */
+    public function statement(WaterAccount $waterAccount, AccountLedgerService $accountLedger): Response
+    {
+        $waterAccount->load('owner:id,first_name,last_name');
+
+        $entries = $waterAccount->ledgerEntries()
+            ->with('recorder:id,first_name,last_name')
+            ->orderByDesc('id')
+            ->paginate(50)
+            ->withQueryString()
+            ->through(fn (AccountLedgerEntry $entry): array => [
+                'id' => $entry->id,
+                'type' => $entry->entry_type->value,
+                'date' => $entry->entry_date->format('d M Y'),
+                'billing_month' => $entry->billing_month,
+                'document_number' => $entry->document_number,
+                'description' => $entry->description,
+                'amount' => (float) $entry->amount,
+                'running_balance' => (float) $entry->running_balance,
+                'recorded_by' => $entry->recorder?->name,
+            ]);
+
+        return Inertia::render('admin/water-accounts/Statement', [
+            'account' => [
+                'id' => $waterAccount->id,
+                'owner_name' => $waterAccount->owner->name,
+                'account_number' => $waterAccount->account_number,
+                'meter_number' => $waterAccount->meter_number,
+                'balance' => $accountLedger->balanceFor($waterAccount),
+            ],
+            'entries' => $entries,
+        ]);
     }
 
     /**

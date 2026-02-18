@@ -111,7 +111,8 @@ class Datatable
                 if (is_array($column)) {
                     $query->orWhereRaw($this->concatenate($query, $column).' like ?', [$term]);
                 } elseif (str_contains($column, '.')) {
-                    [$relation, $columnName] = explode('.', $column, 2);
+                    $relation = substr($column, 0, strrpos($column, '.'));
+                    $columnName = substr($column, strrpos($column, '.') + 1);
 
                     $query->orWhereHas($relation, fn (Builder $subQuery) => $subQuery->where($columnName, 'like', $term));
                 } else {
