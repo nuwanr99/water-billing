@@ -56,6 +56,10 @@ class RolePermissionSeeder extends Seeder
             'ledger.view',
             'ledger.record-charge',
         ],
+        'system-ledger' => [
+            'system-ledger.view',
+            'system-ledger.manage',
+        ],
         'admin' => [
             'admin',
         ],
@@ -95,6 +99,7 @@ class RolePermissionSeeder extends Seeder
             'admin', 'tariffs.view', 'tariffs.manage',
             'bills.view', 'bills.generate', 'bills.print', 'bills.reissue',
             'ledger.view', 'ledger.record-charge',
+            'system-ledger.view', 'system-ledger.manage',
         ]);
 
         $superAdminRole->syncPermissions(Permission::all());

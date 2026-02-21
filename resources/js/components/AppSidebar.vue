@@ -2,10 +2,12 @@
 import { Link, usePage } from '@inertiajs/vue3';
 import {
   ArrowLeftRight,
+  BookOpenText,
   Droplets,
   Gauge,
   KeyRound,
   LayoutGrid,
+  ListTree,
   Receipt,
   ReceiptText,
   ShieldCheck,
@@ -31,8 +33,10 @@ import { dashboard } from '@/routes';
 import { dashboard as adminDashboard } from '@/routes/admin';
 import { index as billingCategoriesIndex } from '@/routes/admin/billing-categories';
 import { index as adminBillsIndex } from '@/routes/admin/bills';
+import { index as ledgerAccountsIndex } from '@/routes/admin/ledger-accounts';
 import { index as permissionsIndex } from '@/routes/admin/permissions';
 import { index as rolesIndex } from '@/routes/admin/roles';
+import { index as systemLedgerIndex } from '@/routes/admin/system-ledger';
 import { index as usersIndex } from '@/routes/admin/users';
 import { index as adminWaterAccountsIndex } from '@/routes/admin/water-accounts';
 import { index as meterReadingsIndex } from '@/routes/meter-readings';
@@ -104,6 +108,19 @@ const adminNavItems = computed<NavItem[]>(() => {
 
   if (hasPermission('bills.view')) {
     items.push({ title: 'Bills', href: adminBillsIndex(), icon: Receipt });
+  }
+
+  if (hasPermission('system-ledger.view')) {
+    items.push({
+      title: 'System ledger',
+      href: systemLedgerIndex(),
+      icon: BookOpenText,
+    });
+    items.push({
+      title: 'Ledger accounts',
+      href: ledgerAccountsIndex(),
+      icon: ListTree,
+    });
   }
 
   if (hasPermission('roles.view')) {

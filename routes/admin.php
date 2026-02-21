@@ -6,6 +6,8 @@ use App\Http\Controllers\Admin\ChargeController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\PermissionController;
 use App\Http\Controllers\Admin\RoleController;
+use App\Http\Controllers\Admin\SystemLedgerAccountController;
+use App\Http\Controllers\Admin\SystemLedgerEntryController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\WaterAccountController;
 use Illuminate\Support\Facades\Route;
@@ -52,6 +54,24 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'verified', 'can:adm
     });
 
     Route::get('/charges/{accountLedgerEntry}/print', [ChargeController::class, 'print'])->middleware('can:ledger.view')->name('charges.print');
+
+    Route::prefix('system-ledger')->name('system-ledger.')->group(function () {
+        Route::get('/', [SystemLedgerEntryController::class, 'index'])->middleware('can:system-ledger.view')->name('index');
+        Route::get('/create', [SystemLedgerEntryController::class, 'create'])->middleware('can:system-ledger.manage')->name('create');
+        Route::post('/', [SystemLedgerEntryController::class, 'store'])->middleware('can:system-ledger.manage')->name('store');
+        Route::post('/transfer', [SystemLedgerEntryController::class, 'storeTransfer'])->middleware('can:system-ledger.manage')->name('transfer.store');
+        Route::get('/{systemLedgerEntry}', [SystemLedgerEntryController::class, 'show'])->middleware('can:system-ledger.view')->name('show');
+    });
+
+    Route::prefix('ledger-accounts')->name('ledger-accounts.')->group(function () {
+        Route::get('/', [SystemLedgerAccountController::class, 'index'])->middleware('can:system-ledger.view')->name('index');
+        Route::get('/create', [SystemLedgerAccountController::class, 'create'])->middleware('can:system-ledger.manage')->name('create');
+        Route::post('/', [SystemLedgerAccountController::class, 'store'])->middleware('can:system-ledger.manage')->name('store');
+        Route::get('/{systemLedgerAccount}', [SystemLedgerAccountController::class, 'show'])->middleware('can:system-ledger.view')->name('show');
+        Route::get('/{systemLedgerAccount}/edit', [SystemLedgerAccountController::class, 'edit'])->middleware('can:system-ledger.manage')->name('edit');
+        Route::put('/{systemLedgerAccount}', [SystemLedgerAccountController::class, 'update'])->middleware('can:system-ledger.manage')->name('update');
+        Route::delete('/{systemLedgerAccount}', [SystemLedgerAccountController::class, 'destroy'])->middleware('can:system-ledger.manage')->name('destroy');
+    });
 
     Route::prefix('billing-categories')->name('billing-categories.')->group(function () {
         Route::get('/', [BillingCategoryController::class, 'index'])->middleware('can:tariffs.view')->name('index');

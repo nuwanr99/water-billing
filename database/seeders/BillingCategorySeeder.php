@@ -70,9 +70,17 @@ class BillingCategorySeeder extends Seeder
 
     /**
      * Seed the billing categories and their tariff slabs.
+     *
+     * Runs only against an empty table: categories and slabs are managed
+     * through the admin UI afterwards, so re-seeding must never overwrite
+     * edited tariffs (it would delete and recreate every slab).
      */
     public function run(): void
     {
+        if (BillingCategory::query()->exists()) {
+            return;
+        }
+
         foreach ($this->categories as $name => $definition) {
             $category = BillingCategory::updateOrCreate(
                 ['name' => $name],
