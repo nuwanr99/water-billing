@@ -18,7 +18,7 @@ import {
 import WaterAccountStatusBadge from '@/components/WaterAccountStatusBadge.vue';
 import { useDatatable } from '@/composables/useDatatable';
 import { usePermission } from '@/composables/usePermission';
-import { create, edit, index } from '@/routes/admin/water-accounts';
+import { create, edit, index, statement } from '@/routes/admin/water-accounts';
 import type { DatatableFilters, Paginated, WaterAccountStatus } from '@/types';
 
 type WaterAccountRow = {
@@ -28,6 +28,7 @@ type WaterAccountRow = {
   owner: { id: number; name: string };
   billing_category: string | null;
   status: WaterAccountStatus;
+  balance: number;
   connected_at: string | null;
   created_at: string | null;
 };
@@ -53,6 +54,19 @@ const { search, sort, direction, sortBy } = useDatatable(
   index().url,
   props.filters,
 );
+
+/**
+ * Balances display with two decimals and a "Rs " prefix; a negative balance
+ * is credit in the member's favour, shown as "CR".
+ */
+const formatBalance = (value: number): string => {
+  const absolute = Math.abs(value).toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+
+  return value < 0 ? `Rs ${absolute} CR` : `Rs ${absolute}`;
+};
 </script>
 
 <template>
@@ -101,6 +115,14 @@ const { search, sort, direction, sortBy } = useDatatable(
             <TableHead>Meter</TableHead>
             <TableHead>Category</TableHead>
             <SortableHead
+              column="balance"
+              :sort="sort"
+              :direction="direction"
+              @sort="sortBy"
+            >
+              Balance
+            </SortableHead>
+            <SortableHead
               column="status"
               :sort="sort"
               :direction="direction"
@@ -136,6 +158,17 @@ const { search, sort, direction, sortBy } = useDatatable(
             <TableCell class="text-muted-foreground">
               {{ waterAccount.billing_category ?? '—' }}
             </TableCell>
+            <TableCell
+              class="tabular-nums"
+              :class="{
+                'text-destructive': waterAccount.balance > 0,
+                'text-emerald-600 dark:text-emerald-400':
+                  waterAccount.balance < 0,
+                'text-muted-foreground': waterAccount.balance === 0,
+              }"
+            >
+              {{ formatBalance(waterAccount.balance) }}
+            </TableCell>
             <TableCell>
               <WaterAccountStatusBadge :status="waterAccount.status" />
             </TableCell>
@@ -143,17 +176,27 @@ const { search, sort, direction, sortBy } = useDatatable(
               {{ waterAccount.connected_at ?? '—' }}
             </TableCell>
             <TableCell>
-              <Button
-                v-if="hasPermission('water-accounts.edit')"
-                variant="outline"
-                size="sm"
-                as-child
-              >
-                <Link :href="edit(waterAccount.id)"> Edit </Link>
-              </Button>
+              <div class="flex items-center gap-2">
+                <Button
+                  v-if="hasPermission('ledger.view')"
+                  variant="outline"
+                  size="sm"
+                  as-child
+                >
+                  <Link :href="statement(waterAccount.id)"> View ledger </Link>
+                </Button>
+                <Button
+                  v-if="hasPermission('water-accounts.edit')"
+                  variant="outline"
+                  size="sm"
+                  as-child
+                >
+                  <Link :href="edit(waterAccount.id)"> Edit </Link>
+                </Button>
+              </div>
             </TableCell>
           </TableRow>
-          <TableEmpty v-if="waterAccounts.data.length === 0" :colspan="7">
+          <TableEmpty v-if="waterAccounts.data.length === 0" :colspan="8">
             No water accounts found.
           </TableEmpty>
         </TableBody>

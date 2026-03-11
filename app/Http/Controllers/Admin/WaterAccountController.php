@@ -10,6 +10,7 @@ use App\Models\AccountLedgerEntry;
 use App\Models\BillingCategory;
 use App\Models\User;
 use App\Models\WaterAccount;
+use App\Models\WaterAccountBalance;
 use App\Services\AccountLedgerService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -38,13 +39,17 @@ class WaterAccountController extends Controller
                     User::select('first_name')->whereColumn('users.id', 'water_accounts.user_id'),
                     $direction === 'desc' ? 'desc' : 'asc',
                 ),
+                'balance' => fn (Builder $query, string $direction) => $query->orderBy(
+                    WaterAccountBalance::select('balance')->whereColumn('water_account_balances.water_account_id', 'water_accounts.id'),
+                    $direction === 'desc' ? 'desc' : 'asc',
+                ),
             ],
             defaultSort: 'created_at',
             defaultDirection: 'desc',
         );
 
         $waterAccounts = $datatable
-            ->paginate(WaterAccount::query()->with(['owner:id,first_name,last_name', 'billingCategory:id,name']))
+            ->paginate(WaterAccount::query()->with(['owner:id,first_name,last_name', 'billingCategory:id,name', 'balanceRecord']))
             ->through(fn (WaterAccount $waterAccount): array => [
                 'id' => $waterAccount->id,
                 'account_number' => $waterAccount->account_number,
@@ -55,6 +60,7 @@ class WaterAccountController extends Controller
                 ],
                 'billing_category' => $waterAccount->billingCategory?->name,
                 'status' => $waterAccount->status->value,
+                'balance' => (float) ($waterAccount->balanceRecord->balance ?? 0),
                 'connected_at' => $waterAccount->connected_at?->toFormattedDateString(),
                 'created_at' => $waterAccount->created_at?->toFormattedDateString(),
             ]);
@@ -96,8 +102,9 @@ class WaterAccountController extends Controller
     }
 
     /**
-     * Show the account's ledger statement: every financial event in posting
-     * order with running balances (D-16). Append-only — display only.
+     * Show the account's ledger statement: every financial event with
+     * running balances (D-16), newest day first so the latest activity is
+     * on page one. Append-only — display only.
      */
     public function statement(WaterAccount $waterAccount, AccountLedgerService $accountLedger): Response
     {
@@ -105,6 +112,8 @@ class WaterAccountController extends Controller
 
         $entries = $waterAccount->ledgerEntries()
             ->with('recorder:id,first_name,last_name')
+            ->reorder()
+            ->orderByDesc('entry_date')
             ->orderByDesc('id')
             ->paginate(50)
             ->withQueryString()

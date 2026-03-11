@@ -3,6 +3,7 @@ import { Head, Link } from '@inertiajs/vue3';
 import { ArrowLeft, Plus, Printer } from '@lucide/vue';
 import Heading from '@/components/Heading.vue';
 import { Button } from '@/components/ui/button';
+import { sheet as printSheet } from '@/routes/admin/charges/print';
 import { index, statement } from '@/routes/admin/water-accounts';
 import { create as createCharge } from '@/routes/admin/water-accounts/charges';
 
@@ -65,17 +66,13 @@ const formatCurrency = (amount: number): string => {
 
   return amount < 0 ? `Rs ${formatted} CR` : `Rs ${formatted}`;
 };
-
-const printNote = (): void => {
-  window.print();
-};
 </script>
 
 <template>
   <Head :title="`Charge note ${charge.document_number}`" />
 
   <div class="flex flex-col gap-6 p-4">
-    <div class="flex flex-wrap items-start justify-between gap-4 print:hidden">
+    <div class="flex flex-wrap items-start justify-between gap-4">
       <Heading
         variant="small"
         :title="`Charge note ${charge.document_number}`"
@@ -97,17 +94,17 @@ const printNote = (): void => {
           </Link>
         </Button>
 
-        <Button @click="printNote">
-          <Printer class="size-4" />
-          Print
+        <Button as-child>
+          <a :href="printSheet(charge.id).url" target="_blank" rel="noopener">
+            <Printer class="size-4" />
+            Print
+          </a>
         </Button>
       </div>
     </div>
 
-    <div class="flex justify-center print:block">
-      <div
-        class="charge-ticket bg-white shadow-sm ring-1 ring-black/10 print:shadow-none print:ring-0"
-      >
+    <div class="flex justify-center">
+      <div class="charge-ticket bg-white shadow-sm ring-1 ring-black/10">
         <div class="center bold" style="font-size: 15px">{{ org.name }}</div>
         <div class="center topic mt-1">{{ noteTitle }}</div>
 
@@ -164,11 +161,6 @@ const printNote = (): void => {
 </template>
 
 <style>
-@page {
-  size: 78mm auto;
-  margin: 0;
-}
-
 .charge-ticket {
   width: 78mm;
   padding: 3mm;
@@ -230,23 +222,5 @@ const printNote = (): void => {
   transform: translateX(-50%);
   background: #fff;
   padding: 0 3px;
-}
-
-@media print {
-  body * {
-    visibility: hidden;
-  }
-
-  .charge-ticket,
-  .charge-ticket * {
-    visibility: visible;
-  }
-
-  .charge-ticket {
-    position: absolute;
-    top: 0;
-    left: 0;
-    margin: 0;
-  }
 }
 </style>

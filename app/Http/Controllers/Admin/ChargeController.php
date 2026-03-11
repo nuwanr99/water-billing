@@ -81,9 +81,26 @@ class ChargeController extends Controller
     }
 
     /**
-     * The charge's printable note (80mm ticket layout).
+     * The charge note screen: details plus a link that opens the print sheet.
      */
     public function print(AccountLedgerEntry $accountLedgerEntry): Response
+    {
+        return Inertia::render('admin/charges/Print', $this->chargeProps($accountLedgerEntry));
+    }
+
+    /**
+     * The bare 80mm print sheet: opened in a new tab, no layout,
+     * auto-triggers the print dialog — close the tab when done.
+     */
+    public function printSheet(AccountLedgerEntry $accountLedgerEntry): Response
+    {
+        return Inertia::render('print/ChargeNote', $this->chargeProps($accountLedgerEntry));
+    }
+
+    /**
+     * @return array{charge: array<string, mixed>, account: array<string, mixed>, org: array{name: string}}
+     */
+    private function chargeProps(AccountLedgerEntry $accountLedgerEntry): array
     {
         abort_unless(in_array($accountLedgerEntry->entry_type, [
             AccountLedgerEntryType::Charge,
@@ -93,7 +110,7 @@ class ChargeController extends Controller
 
         $accountLedgerEntry->load(['waterAccount.owner', 'recorder:id,first_name,last_name']);
 
-        return Inertia::render('admin/charges/Print', [
+        return [
             'charge' => [
                 'id' => $accountLedgerEntry->id,
                 'document_number' => $accountLedgerEntry->document_number,
@@ -112,6 +129,6 @@ class ChargeController extends Controller
             'org' => [
                 'name' => config('app.name'),
             ],
-        ]);
+        ];
     }
 }

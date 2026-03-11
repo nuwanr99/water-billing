@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Head, Link } from '@inertiajs/vue3';
-import { Plus } from '@lucide/vue';
+import { Banknote, Plus } from '@lucide/vue';
 import Heading from '@/components/Heading.vue';
 import Pagination from '@/components/Pagination.vue';
 import { Badge } from '@/components/ui/badge';
@@ -16,6 +16,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { usePermission } from '@/composables/usePermission';
+import { show as recordPayment } from '@/routes/admin/payments/collect';
 import { index } from '@/routes/admin/water-accounts';
 import { create as createCharge } from '@/routes/admin/water-accounts/charges';
 import type { Paginated } from '@/types';
@@ -116,12 +117,24 @@ const pageTitle = `Statement ${props.account.account_number}`;
         title="Account statement"
         description="Every financial event on the account with running balances"
       />
-      <Button v-if="hasPermission('ledger.record-charge')" as-child>
-        <Link :href="createCharge(account.id)">
-          <Plus class="size-4" />
-          Add charge
-        </Link>
-      </Button>
+      <div class="flex flex-wrap items-center gap-2">
+        <Button
+          v-if="hasPermission('payments.record-manual')"
+          variant="outline"
+          as-child
+        >
+          <Link :href="recordPayment(account.id)">
+            <Banknote class="size-4" />
+            Record payment
+          </Link>
+        </Button>
+        <Button v-if="hasPermission('ledger.record-charge')" as-child>
+          <Link :href="createCharge(account.id)">
+            <Plus class="size-4" />
+            Add charge
+          </Link>
+        </Button>
+      </div>
     </div>
 
     <Card>

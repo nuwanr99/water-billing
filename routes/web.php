@@ -28,6 +28,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('preview/{meterReading}', [BillController::class, 'store'])->name('store')->middleware('can:bills.generate');
         Route::get('{bill}', [BillController::class, 'show'])->name('show')->middleware('can:bills.view');
     });
+
 });
 
 require __DIR__.'/settings.php';

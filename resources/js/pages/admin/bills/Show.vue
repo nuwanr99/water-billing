@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Head, Link, useForm } from '@inertiajs/vue3';
+import { Banknote } from '@lucide/vue';
 import { computed, ref } from 'vue';
 import Heading from '@/components/Heading.vue';
 import InputError from '@/components/InputError.vue';
@@ -27,7 +28,9 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { usePermission } from '@/composables/usePermission';
 import { index, reissue, show } from '@/routes/admin/bills';
+import { show as recordPayment } from '@/routes/admin/payments/collect';
 
 type TariffTier = {
   lower_units: number;
@@ -114,6 +117,8 @@ defineOptions({
     ],
   },
 });
+
+const { hasPermission } = usePermission();
 
 const statusVariants: Record<
   string,
@@ -232,58 +237,72 @@ const submitReissue = () => {
         </div>
       </div>
 
-      <Dialog v-if="canReissue" v-model:open="reissueOpen">
-        <DialogTrigger as-child>
-          <Button variant="outline">Reissue bill</Button>
-        </DialogTrigger>
-        <DialogContent>
-          <form class="space-y-6" @submit.prevent="submitReissue">
-            <DialogHeader class="space-y-3">
-              <DialogTitle>Reissue {{ bill.bill_number }}?</DialogTitle>
-              <DialogDescription>
-                This bill will be superseded and a new bill generated from the
-                corrected meter reading. Its ledger charge is reversed and
-                reposted.
-              </DialogDescription>
-            </DialogHeader>
+      <div class="flex flex-wrap items-center gap-2">
+        <Button
+          v-if="
+            hasPermission('payments.record-manual') && bill.status !== 'paid'
+          "
+          as-child
+        >
+          <Link :href="recordPayment(account.id)">
+            <Banknote class="size-4" />
+            Record payment
+          </Link>
+        </Button>
 
-            <div class="grid gap-2">
-              <Label for="reading_value">Corrected reading</Label>
-              <Input
-                id="reading_value"
-                v-model="reissueForm.reading_value"
-                type="number"
-                step="0.01"
-                min="0"
-                inputmode="decimal"
-              />
-              <InputError :message="reissueForm.errors.reading_value" />
-              <InputError :message="reissueGuardError" />
-            </div>
+        <Dialog v-if="canReissue" v-model:open="reissueOpen">
+          <DialogTrigger as-child>
+            <Button variant="outline">Reissue bill</Button>
+          </DialogTrigger>
+          <DialogContent>
+            <form class="space-y-6" @submit.prevent="submitReissue">
+              <DialogHeader class="space-y-3">
+                <DialogTitle>Reissue {{ bill.bill_number }}?</DialogTitle>
+                <DialogDescription>
+                  This bill will be superseded and a new bill generated from the
+                  corrected meter reading. Its ledger charge is reversed and
+                  reposted.
+                </DialogDescription>
+              </DialogHeader>
 
-            <DialogFooter class="gap-2">
-              <DialogClose as-child>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  @click="
-                    () => {
-                      reissueForm.clearErrors();
-                      reissueForm.reset();
-                    }
-                  "
-                >
-                  Cancel
+              <div class="grid gap-2">
+                <Label for="reading_value">Corrected reading</Label>
+                <Input
+                  id="reading_value"
+                  v-model="reissueForm.reading_value"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  inputmode="decimal"
+                />
+                <InputError :message="reissueForm.errors.reading_value" />
+                <InputError :message="reissueGuardError" />
+              </div>
+
+              <DialogFooter class="gap-2">
+                <DialogClose as-child>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    @click="
+                      () => {
+                        reissueForm.clearErrors();
+                        reissueForm.reset();
+                      }
+                    "
+                  >
+                    Cancel
+                  </Button>
+                </DialogClose>
+
+                <Button type="submit" :disabled="reissueForm.processing">
+                  Reissue bill
                 </Button>
-              </DialogClose>
-
-              <Button type="submit" :disabled="reissueForm.processing">
-                Reissue bill
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+      </div>
     </div>
 
     <div class="grid gap-6 lg:grid-cols-2">

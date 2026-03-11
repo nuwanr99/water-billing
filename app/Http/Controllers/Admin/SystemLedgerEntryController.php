@@ -53,7 +53,6 @@ class SystemLedgerEntryController extends Controller
                 'description' => $entry->description,
                 'source_type' => $entry->source_type,
                 'total_debit' => (float) $entry->total_debit,
-                'total_credit' => (float) $entry->total_credit,
                 'is_posted' => $entry->is_posted,
             ]);
 

@@ -1,11 +1,13 @@
 <?php
 
+use App\Enums\AccountLedgerEntryType;
 use App\Models\AccountLedgerEntry;
 use App\Models\Bill;
 use App\Models\BillingCategory;
 use App\Models\MeterReading;
 use App\Models\User;
 use App\Models\WaterAccount;
+use App\Services\AccountLedgerService;
 use App\Services\BillGenerationService;
 use Database\Seeders\RolePermissionSeeder;
 
@@ -109,19 +111,27 @@ test('a non-adjustment charge must be positive', function () {
         ->assertSessionHasErrors('amount');
 });
 
-test('the statement page lists the account ledger with running balances', function () {
+test('the statement page lists the account ledger newest first', function () {
     ['account' => $account, 'reading' => $reading] = fieldAccount();
 
     app(BillGenerationService::class)->generate($reading, $this->waterController);
+
+    app(AccountLedgerService::class)->post(
+        $account,
+        AccountLedgerEntryType::Charge,
+        250.00,
+        'Repair charge',
+    );
 
     $this->actingAs($this->treasurer)
         ->get(route('admin.water-accounts.statement', $account))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('admin/water-accounts/Statement')
-            ->where('account.balance', 287.5)
-            ->count('entries.data', 1)
-            ->where('entries.data.0.type', 'water_charge')
+            ->where('account.balance', 537.5)
+            ->count('entries.data', 2)
+            ->where('entries.data.0.type', 'charge')
+            ->where('entries.data.1.type', 'water_charge')
         );
 });
 

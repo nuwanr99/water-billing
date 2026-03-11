@@ -28,7 +28,6 @@ type EntryRow = {
   description: string;
   source_type: string | null;
   total_debit: number;
-  total_credit: number;
   is_posted: boolean;
 };
 
@@ -121,8 +120,7 @@ function formatCurrency(amount: number): string {
             <TableHead>Date</TableHead>
             <TableHead>Description</TableHead>
             <TableHead>Source</TableHead>
-            <TableHead>Debit</TableHead>
-            <TableHead>Credit</TableHead>
+            <TableHead>Amount</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -153,11 +151,8 @@ function formatCurrency(amount: number): string {
             <TableCell class="tabular-nums">
               {{ formatCurrency(entry.total_debit) }}
             </TableCell>
-            <TableCell class="tabular-nums">
-              {{ formatCurrency(entry.total_credit) }}
-            </TableCell>
           </TableRow>
-          <TableEmpty v-if="entries.data.length === 0" :colspan="6">
+          <TableEmpty v-if="entries.data.length === 0" :colspan="5">
             No journal entries found.
           </TableEmpty>
         </TableBody>

@@ -4,7 +4,7 @@ namespace App\Services;
 
 use App\Models\SystemLedgerAccount;
 use App\Models\SystemLedgerEntry;
-use Illuminate\Support\Carbon;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
@@ -27,7 +27,7 @@ class SystemLedgerService
     public function post(
         string $description,
         array $lines,
-        ?Carbon $entryDate = null,
+        ?CarbonInterface $entryDate = null,
         ?string $sourceType = null,
         ?int $sourceId = null,
     ): SystemLedgerEntry {

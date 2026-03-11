@@ -2,6 +2,7 @@
 import { Link, usePage } from '@inertiajs/vue3';
 import {
   ArrowLeftRight,
+  Banknote,
   BookOpenText,
   Droplets,
   Gauge,
@@ -34,6 +35,7 @@ import { dashboard as adminDashboard } from '@/routes/admin';
 import { index as billingCategoriesIndex } from '@/routes/admin/billing-categories';
 import { index as adminBillsIndex } from '@/routes/admin/bills';
 import { index as ledgerAccountsIndex } from '@/routes/admin/ledger-accounts';
+import { index as adminPaymentsIndex } from '@/routes/admin/payments';
 import { index as permissionsIndex } from '@/routes/admin/permissions';
 import { index as rolesIndex } from '@/routes/admin/roles';
 import { index as systemLedgerIndex } from '@/routes/admin/system-ledger';
@@ -108,6 +110,14 @@ const adminNavItems = computed<NavItem[]>(() => {
 
   if (hasPermission('bills.view')) {
     items.push({ title: 'Bills', href: adminBillsIndex(), icon: Receipt });
+  }
+
+  if (hasPermission('payments.view-all')) {
+    items.push({
+      title: 'Payments',
+      href: adminPaymentsIndex(),
+      icon: Banknote,
+    });
   }
 
   if (hasPermission('system-ledger.view')) {

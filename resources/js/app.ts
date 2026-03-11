@@ -14,6 +14,10 @@ createInertiaApp({
     switch (true) {
       case name === 'Welcome':
         return null;
+      // Bare print sheets: opened in a new tab, auto-print, no chrome —
+      // any layout wrapper distorts the 78mm thermal geometry.
+      case name.startsWith('print/'):
+        return null;
       case name.startsWith('auth/'):
         return AuthLayout;
       case name.startsWith('meter-readings/'):

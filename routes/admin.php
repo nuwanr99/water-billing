@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\BillController;
 use App\Http\Controllers\Admin\BillingCategoryController;
 use App\Http\Controllers\Admin\ChargeController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\PaymentController;
 use App\Http\Controllers\Admin\PermissionController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\SystemLedgerAccountController;
@@ -54,6 +55,17 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'verified', 'can:adm
     });
 
     Route::get('/charges/{accountLedgerEntry}/print', [ChargeController::class, 'print'])->middleware('can:ledger.view')->name('charges.print');
+    Route::get('/charges/{accountLedgerEntry}/print/sheet', [ChargeController::class, 'printSheet'])->middleware('can:ledger.view')->name('charges.print.sheet');
+
+    Route::prefix('payments')->name('payments.')->group(function () {
+        Route::get('/', [PaymentController::class, 'index'])->middleware('can:payments.view-all')->name('index');
+        Route::get('/collect', [PaymentController::class, 'collect'])->middleware('can:payments.record-manual')->name('collect');
+        Route::get('/collect/{waterAccount}', [PaymentController::class, 'show'])->middleware('can:payments.record-manual')->name('collect.show');
+        Route::post('/collect/{waterAccount}', [PaymentController::class, 'store'])->middleware('can:payments.record-manual')->name('collect.store');
+        Route::get('/receipt/{payment}', [PaymentController::class, 'receipt'])->name('receipt');
+        Route::get('/receipt/{payment}/print', [PaymentController::class, 'receiptPrint'])->name('receipt.print');
+        Route::get('/{payment}/attachment', [PaymentController::class, 'attachment'])->name('attachment');
+    });
 
     Route::prefix('system-ledger')->name('system-ledger.')->group(function () {
         Route::get('/', [SystemLedgerEntryController::class, 'index'])->middleware('can:system-ledger.view')->name('index');

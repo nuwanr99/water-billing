@@ -7,8 +7,8 @@ use App\Models\AccountLedgerEntry;
 use App\Models\User;
 use App\Models\WaterAccount;
 use App\Models\WaterAccountBalance;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -33,7 +33,7 @@ class AccountLedgerService
         ?string $billingMonth = null,
         ?string $documentNumber = null,
         ?array $metadata = null,
-        ?Carbon $entryDate = null,
+        ?CarbonInterface $entryDate = null,
     ): AccountLedgerEntry {
         return DB::transaction(function () use ($waterAccount, $type, $amount, $description, $recordedBy, $billingMonth, $documentNumber, $metadata, $entryDate): AccountLedgerEntry {
             $balance = $this->lockBalanceRow($waterAccount);
