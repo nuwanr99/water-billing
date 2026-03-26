@@ -1,5 +1,11 @@
 <?php
 
+use App\Models\Bill;
+use App\Models\BillingCategory;
+use App\Models\MeterReading;
+use App\Models\User;
+use App\Models\WaterAccount;
+use App\Services\BillGenerationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -47,4 +53,32 @@ expect()->extend('toBeOne', function () {
 function something()
 {
     // ..
+}
+
+/**
+ * An account on a flat 20.00/unit tariff with a current-month reading of
+ * the given consumption, billed — total due = 20 x units.
+ *
+ * @return array{account: WaterAccount, bill: Bill}
+ */
+function billedAccount(float $units = 10, ?WaterAccount $account = null): array
+{
+    if ($account === null) {
+        $category = BillingCategory::factory()->create();
+        $category->tiers()->createMany([
+            ['lower_units' => 0, 'upper_units' => null, 'rate_per_unit' => 20.00, 'service_charge' => 0],
+        ]);
+
+        $account = WaterAccount::factory()->create(['billing_category_id' => $category->id, 'initial_reading' => 1000]);
+    }
+
+    $previous = $account->previousMeterValue();
+
+    $reading = MeterReading::factory()->for($account)
+        ->forMonth(now()->format('Y-m'))
+        ->create(['reading_value' => $previous + $units, 'consumption' => $units]);
+
+    $bill = app(BillGenerationService::class)->generate($reading, User::factory()->create());
+
+    return ['account' => $account, 'bill' => $bill];
 }

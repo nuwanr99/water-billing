@@ -3,12 +3,17 @@
 namespace App\Http\Controllers;
 
 use App\Enums\WaterAccountStatus;
+use App\Services\AccountLedgerService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class DashboardController extends Controller
 {
+    public function __construct(
+        protected AccountLedgerService $accountLedger,
+    ) {}
+
     /**
      * Show the user dashboard.
      */
@@ -16,8 +21,7 @@ class DashboardController extends Controller
     {
         $user = $request->user();
 
-        $preferredId = $request->session()->get('current_water_account_id');
-        $currentAccount = $user->resolveCurrentWaterAccount(is_int($preferredId) ? $preferredId : null);
+        $currentAccount = $user->resolveCurrentWaterAccount();
         $latestReading = $currentAccount?->latestReading;
 
         return Inertia::render('Dashboard', [
@@ -28,6 +32,8 @@ class DashboardController extends Controller
                 'connection_address' => $currentAccount->connection_address,
                 'status' => $currentAccount->status->value,
                 'connected_at' => $currentAccount->connected_at?->toFormattedDateString(),
+                'balance' => $this->accountLedger->balanceFor($currentAccount),
+                'pay_url' => route('my.pay.show', $currentAccount),
             ],
             'latestReading' => $latestReading === null ? null : [
                 'value' => (float) $latestReading->reading_value,

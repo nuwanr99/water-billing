@@ -14,7 +14,8 @@ use Illuminate\Support\Carbon;
  * PaymentService, which posts both ledger sides and settles bills.
  *
  * @property int $id
- * @property string $receipt_number
+ * @property string|null $receipt_number
+ * @property string|null $public_token
  * @property int $water_account_id
  * @property int|null $account_ledger_entry_id
  * @property int|null $system_ledger_entry_id
@@ -36,7 +37,7 @@ use Illuminate\Support\Carbon;
  * @property-read SystemLedgerAccount|null $destinationAccount
  * @property-read User|null $recorder
  */
-#[Fillable(['receipt_number', 'water_account_id', 'account_ledger_entry_id', 'system_ledger_entry_id', 'destination_account_id', 'method', 'status', 'amount', 'reference', 'attachment_path', 'payhere_reference', 'gateway_payload', 'recorded_by', 'paid_at'])]
+#[Fillable(['receipt_number', 'public_token', 'water_account_id', 'account_ledger_entry_id', 'system_ledger_entry_id', 'destination_account_id', 'method', 'status', 'amount', 'reference', 'attachment_path', 'payhere_reference', 'gateway_payload', 'recorded_by', 'paid_at'])]
 class Payment extends Model
 {
     /**

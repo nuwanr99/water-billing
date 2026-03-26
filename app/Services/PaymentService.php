@@ -16,6 +16,7 @@ use App\Models\User;
 use App\Models\WaterAccount;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -72,6 +73,7 @@ class PaymentService
 
             $payment = Payment::query()->create([
                 'receipt_number' => $receiptNumber,
+                'public_token' => Str::uuid()->toString(),
                 'water_account_id' => $waterAccount->id,
                 'account_ledger_entry_id' => $entry->id,
                 'destination_account_id' => $destination->id,
@@ -112,6 +114,157 @@ class PaymentService
             PaymentReceived::dispatch($payment);
 
             return $payment;
+        });
+    }
+
+    /**
+     * Create a pending online-payment intent (D-36): no receipt number, no
+     * ledger postings — nothing financial happens until the webhook
+     * confirms. Abandoned checkouts simply stay pending.
+     */
+    public function createGatewayIntent(WaterAccount $waterAccount, float $amount): Payment
+    {
+        if ($amount <= 0) {
+            throw ValidationException::withMessages(['amount' => __('The payment amount must be positive.')]);
+        }
+
+        return Payment::query()->create([
+            'public_token' => Str::uuid()->toString(),
+            'water_account_id' => $waterAccount->id,
+            'method' => PaymentMethod::Payhere,
+            'status' => PaymentStatus::Pending,
+            'amount' => round($amount, 2),
+            'paid_at' => now(),
+        ]);
+    }
+
+    /**
+     * Complete a gateway intent from a verified webhook: assign the receipt
+     * number, post both ledgers (online money lands in the Bank account),
+     * and settle bills — idempotent under a row lock, so duplicate webhook
+     * deliveries post nothing twice.
+     *
+     * The posted amount is OUR intent's amount, never the payload's — the
+     * signature verification already proved they agree, and the local
+     * record is the source of truth for what enters the books.
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    public function completeGateway(Payment $payment, array $payload): Payment
+    {
+        return DB::transaction(function () use ($payment, $payload): Payment {
+            /** @var Payment $payment */
+            $payment = Payment::query()->lockForUpdate()->findOrFail($payment->id);
+
+            if ($payment->status === PaymentStatus::Completed) {
+                return $payment;
+            }
+
+            $waterAccount = $payment->waterAccount;
+            $amount = round((float) $payment->amount, 2);
+            $receiptNumber = $this->runningNumbers->next('receipt');
+
+            $bank = SystemLedgerAccount::query()->where('code', '1100')->firstOrFail();
+
+            $entry = $this->accountLedger->post(
+                $waterAccount,
+                AccountLedgerEntryType::Payment,
+                -$amount,
+                __('Online payment — :receipt', ['receipt' => $receiptNumber]),
+                documentNumber: $receiptNumber,
+            );
+
+            $journal = $this->systemLedger->post(
+                __('Online payment :receipt from :owner (:account) via PayHere', [
+                    'receipt' => $receiptNumber,
+                    'owner' => $waterAccount->owner->name,
+                    'account' => $waterAccount->account_number,
+                ]),
+                [
+                    ['account' => $bank->code, 'amount' => $amount, 'description' => __('Payment received')],
+                    ['account' => '4000', 'amount' => -$amount, 'description' => __('Water charges income')],
+                ],
+                now(),
+                sourceType: 'payment',
+                sourceId: $payment->id,
+            );
+
+            $payment->update([
+                'receipt_number' => $receiptNumber,
+                'account_ledger_entry_id' => $entry->id,
+                'system_ledger_entry_id' => $journal->id,
+                'destination_account_id' => $bank->id,
+                'status' => PaymentStatus::Completed,
+                'payhere_reference' => $payload['payment_id'] ?? null,
+                'paid_at' => now(),
+            ]);
+
+            $this->settleBills($waterAccount);
+
+            $this->audit->log('payment.completed', $payment, [
+                'receipt_number' => $receiptNumber,
+                'amount' => $amount,
+                'gateway' => 'payhere',
+            ]);
+
+            PaymentReceived::dispatch($payment);
+
+            return $payment;
+        });
+    }
+
+    /**
+     * Mark a gateway intent failed/canceled from a verified webhook. Only
+     * pending intents transition — a completed payment is never downgraded.
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    public function failGateway(Payment $payment, array $payload): void
+    {
+        DB::transaction(function () use ($payment, $payload) {
+            /** @var Payment $payment */
+            $payment = Payment::query()->lockForUpdate()->findOrFail($payment->id);
+
+            if ($payment->status !== PaymentStatus::Pending) {
+                return;
+            }
+
+            $payment->update([
+                'status' => PaymentStatus::Failed,
+                'payhere_reference' => $payload['payment_id'] ?? null,
+            ]);
+
+            $this->audit->log('payment.failed', $payment, [
+                'status_code' => $payload['status_code'] ?? null,
+                'gateway' => 'payhere',
+            ]);
+        });
+    }
+
+    /**
+     * Append one gateway notification to the payment's history — every
+     * webhook logs exactly once, success or not, so tampered or failed
+     * attempts leave a trace alongside the real payment.
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    public function logGatewayAttempt(Payment $payment, array $payload, bool $success, ?string $message = null): void
+    {
+        DB::transaction(function () use ($payment, $payload, $success, $message) {
+            /** @var Payment $payment */
+            $payment = Payment::query()->lockForUpdate()->findOrFail($payment->id);
+
+            $payment->update([
+                'gateway_payload' => [
+                    ...($payment->gateway_payload ?? []),
+                    [
+                        'timestamp' => now()->toIso8601String(),
+                        'success' => $success,
+                        'message' => $message,
+                        'payload' => $payload,
+                    ],
+                ],
+            ]);
         });
     }
 

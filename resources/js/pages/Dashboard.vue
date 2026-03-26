@@ -31,6 +31,8 @@ type CurrentAccount = {
   connection_address: string | null;
   status: WaterAccountStatus;
   connected_at: string | null;
+  balance: number;
+  pay_url: string;
 };
 
 defineProps<{
@@ -103,6 +105,16 @@ const months = [
 ];
 
 const maxUsage = Math.max(...sample.usageByMonth);
+
+/**
+ * Amounts render as "Rs 1,234.56" with two decimals; the sign is conveyed
+ * by the surrounding Total due / CR (credit) styling rather than a minus sign.
+ */
+const formatAmount = (value: number): string =>
+  Math.abs(value).toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 </script>
 
 <template>
@@ -196,9 +208,7 @@ const maxUsage = Math.max(...sample.usageByMonth);
           </CardHeader>
           <CardContent class="text-xs text-muted-foreground">
             {{
-              latestReading
-                ? 'Since the previous reading'
-                : 'No readings yet'
+              latestReading ? 'Since the previous reading' : 'No readings yet'
             }}
           </CardContent>
         </Card>
@@ -301,6 +311,30 @@ const maxUsage = Math.max(...sample.usageByMonth);
                   {{ currentAccount.connected_at ?? 'Not recorded' }}
                 </p>
               </div>
+            </div>
+            <div class="flex items-center justify-between gap-3 border-t pt-4">
+              <div>
+                <p class="text-xs text-muted-foreground">Balance</p>
+                <p
+                  v-if="currentAccount.balance > 0"
+                  class="font-semibold text-red-600 tabular-nums dark:text-red-400"
+                >
+                  Total due Rs {{ formatAmount(currentAccount.balance) }}
+                </p>
+                <p
+                  v-else-if="currentAccount.balance < 0"
+                  class="font-semibold text-emerald-600 tabular-nums dark:text-emerald-400"
+                >
+                  CR Rs {{ formatAmount(currentAccount.balance) }}
+                </p>
+                <p v-else class="font-medium text-muted-foreground">Settled</p>
+              </div>
+              <Button size="sm" as-child>
+                <Link :href="currentAccount.pay_url">
+                  <CreditCard class="size-4" />
+                  Pay online
+                </Link>
+              </Button>
             </div>
           </CardContent>
         </Card>

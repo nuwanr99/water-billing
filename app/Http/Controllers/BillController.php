@@ -96,6 +96,10 @@ class BillController extends Controller
             'org' => [
                 'name' => config('app.name'),
             ],
+            'paymentUrl' => route('pay.show', [
+                'account' => $bill->waterAccount->account_number,
+                'meter' => $bill->waterAccount->meter_number,
+            ]),
         ]);
     }
 

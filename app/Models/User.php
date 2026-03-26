@@ -34,10 +34,11 @@ use Spatie\Permission\Traits\HasRoles;
  * @property string|null $two_factor_recovery_codes
  * @property Carbon|null $two_factor_confirmed_at
  * @property string|null $remember_token
+ * @property int|null $last_water_account_id
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['first_name', 'last_name', 'phone', 'address', 'wa_number', 'email', 'password'])]
+#[Fillable(['first_name', 'last_name', 'phone', 'address', 'wa_number', 'email', 'password', 'last_water_account_id'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
 #[Appends(['name'])]
 class User extends Authenticatable implements PasskeyUser
@@ -79,12 +80,14 @@ class User extends Authenticatable implements PasskeyUser
     }
 
     /**
-     * Resolve the user's currently selected water account, preferring the
-     * given account when it is theirs, then the first active account.
+     * Resolve the user's currently selected water account: the persisted
+     * last-used account when it is still theirs, then the first active
+     * account. The selection lives on the users table, not in the
+     * session, so it survives logouts and follows the user across devices.
      */
-    public function resolveCurrentWaterAccount(?int $preferredId = null): ?WaterAccount
+    public function resolveCurrentWaterAccount(): ?WaterAccount
     {
-        return $this->waterAccounts->firstWhere('id', $preferredId)
+        return $this->waterAccounts->firstWhere('id', $this->last_water_account_id)
             ?? $this->waterAccounts->firstWhere('status', WaterAccountStatus::Active)
             ?? $this->waterAccounts->first();
     }

@@ -25,7 +25,7 @@ test('a member sees only their own water accounts', function () {
         );
 });
 
-test('a member can switch their current water account', function () {
+test('a member can switch their current water account and it persists across sessions', function () {
     WaterAccount::factory()->for($this->member, 'owner')->create();
     $second = WaterAccount::factory()->for($this->member, 'owner')->create();
 
@@ -34,7 +34,16 @@ test('a member can switch their current water account', function () {
         ->post(route('water-accounts.switch', $second))
         ->assertRedirect(route('dashboard'));
 
-    expect(session('current_water_account_id'))->toBe($second->id);
+    // Persisted on the user, not the session (survives logout/devices).
+    expect($this->member->refresh()->last_water_account_id)->toBe($second->id);
+
+    $this->flushSession();
+
+    $this->actingAs($this->member)
+        ->get(route('dashboard'))
+        ->assertInertia(fn ($page) => $page
+            ->where('currentAccount.id', $second->id)
+        );
 });
 
 test('a member cannot switch to another member\'s water account', function () {

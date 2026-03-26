@@ -35,13 +35,15 @@ class WaterAccountController extends Controller
     }
 
     /**
-     * Switch the member's currently selected water account.
+     * Switch the member's currently selected water account. Persisted on
+     * the user so the selection survives logouts and follows them across
+     * devices.
      */
     public function switchTo(Request $request, WaterAccount $waterAccount): RedirectResponse
     {
         abort_unless($waterAccount->user_id === $request->user()->id, 403);
 
-        $request->session()->put('current_water_account_id', $waterAccount->id);
+        $request->user()->update(['last_water_account_id' => $waterAccount->id]);
 
         return back();
     }

@@ -58,11 +58,7 @@ class HandleInertiaRequests extends Middleware
                     'status' => $waterAccount->status->value,
                 ])
                 ->all() ?? [],
-            'currentWaterAccountId' => function () use ($user, $request): ?int {
-                $preferredId = $request->session()->get('current_water_account_id');
-
-                return $user?->resolveCurrentWaterAccount(is_int($preferredId) ? $preferredId : null)?->id;
-            },
+            'currentWaterAccountId' => fn (): ?int => $user?->resolveCurrentWaterAccount()?->id,
         ];
     }
 }

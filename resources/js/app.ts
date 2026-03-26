@@ -18,6 +18,9 @@ createInertiaApp({
       // any layout wrapper distorts the 78mm thermal geometry.
       case name.startsWith('print/'):
         return null;
+      // Public payment pages: self-contained, no app chrome (D-36).
+      case name.startsWith('pay/'):
+        return null;
       case name.startsWith('auth/'):
         return AuthLayout;
       case name.startsWith('meter-readings/'):

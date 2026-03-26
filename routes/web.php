@@ -2,11 +2,21 @@
 
 use App\Http\Controllers\BillController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\MemberPaymentController;
 use App\Http\Controllers\MeterReadingController;
+use App\Http\Controllers\PublicPaymentController;
 use App\Http\Controllers\WaterAccountController;
 use Illuminate\Support\Facades\Route;
 
 Route::inertia('/', 'Welcome')->name('home');
+
+Route::prefix('pay')->name('pay.')->group(function () {
+    Route::get('', [PublicPaymentController::class, 'show'])->name('show');
+    Route::post('lookup', [PublicPaymentController::class, 'lookup'])->name('lookup');
+    Route::post('checkout', [PublicPaymentController::class, 'checkout'])->name('checkout');
+    Route::get('result/{payment:public_token}', [PublicPaymentController::class, 'result'])->name('result');
+    Route::get('receipt/{payment:public_token}', [PublicPaymentController::class, 'receiptPdf'])->name('receipt-pdf');
+});
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', DashboardController::class)->name('dashboard');
@@ -29,6 +39,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('{bill}', [BillController::class, 'show'])->name('show')->middleware('can:bills.view');
     });
 
+    Route::prefix('my/pay')->name('my.pay.')->group(function () {
+        Route::get('{waterAccount}', [MemberPaymentController::class, 'show'])->name('show');
+        Route::post('{waterAccount}', [MemberPaymentController::class, 'checkout'])->name('checkout');
+    });
 });
 
 require __DIR__.'/settings.php';

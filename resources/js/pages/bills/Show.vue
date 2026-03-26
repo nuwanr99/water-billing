@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { Head, Link, setLayoutProps } from '@inertiajs/vue3';
 import { ArrowLeft, Printer } from '@lucide/vue';
-import { computed } from 'vue';
+import QRCode from 'qrcode';
+import { computed, onMounted, ref } from 'vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import MeterReaderLayout from '@/layouts/MeterReaderLayout.vue';
@@ -78,6 +79,7 @@ const props = defineProps<{
   org: {
     name: string;
   };
+  paymentUrl: string;
 }>();
 
 setLayoutProps({
@@ -134,6 +136,17 @@ const formatLkr = (value: number): string => `රු. ${formatAmount(value)}`;
 
 const formatUnits = (value: number): string =>
   new Intl.NumberFormat('en-US').format(Number(value) || 0);
+
+const qrCanvas = ref<HTMLCanvasElement | null>(null);
+
+onMounted(() => {
+  if (qrCanvas.value) {
+    void QRCode.toCanvas(qrCanvas.value, props.paymentUrl, {
+      width: 110,
+      margin: 0,
+    });
+  }
+});
 
 const printBill = (): void => {
   window.print();
@@ -374,6 +387,14 @@ const printBill = (): void => {
         </div>
         <div class="hr"></div>
 
+        <div class="no-break relative z-40">
+          <div class="center">
+            <canvas ref="qrCanvas"></canvas>
+          </div>
+          <div class="center tiny mt-1">ස්කෑන් කර ඔන්ලයින් ගෙවන්න</div>
+        </div>
+        <div class="hr"></div>
+
         <div class="row tiny relative z-40">
           <div>Served by: {{ bill.generated_by }}</div>
           <div>{{ bill.issued_at }}</div>
@@ -496,6 +517,15 @@ const printBill = (): void => {
 
 .ticket .no-break {
   page-break-inside: avoid;
+}
+
+/*
+ * Preflight makes canvas display:block, so text-align centering does not
+ * apply — the QR needs explicit margin centering.
+ */
+.ticket canvas {
+  display: block;
+  margin: 0 auto;
 }
 
 .ticket .cut-line {
