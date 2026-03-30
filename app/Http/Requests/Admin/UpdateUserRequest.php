@@ -24,7 +24,7 @@ class UpdateUserRequest extends FormRequest
 
         return [
             ...$this->profileRules($user->id),
-            'phone' => ['required', 'string', 'max:255'],
+            'phone' => ['required', 'string', 'max:255', Rule::unique(User::class)->ignore($user->id)],
             'address' => ['required', 'string', 'max:255'],
             'wa_number' => ['nullable', 'string', 'max:255'],
             'roles' => ['array'],

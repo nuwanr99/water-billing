@@ -34,7 +34,7 @@ const user = computed(() => page.props.auth.user);
     <Heading
       variant="small"
       title="Profile"
-      description="Update your name and email address"
+      description="Update your name, email address, and contact numbers"
     />
 
     <Form
@@ -85,6 +85,36 @@ const user = computed(() => page.props.auth.user);
           placeholder="Email address"
         />
         <InputError class="mt-2" :message="errors.email" />
+      </div>
+
+      <div class="grid gap-6 sm:grid-cols-2">
+        <div class="grid gap-2">
+          <Label for="phone">Phone number</Label>
+          <Input
+            id="phone"
+            type="tel"
+            class="mt-1 block w-full"
+            name="phone"
+            :default-value="user.phone"
+            required
+            autocomplete="tel"
+            placeholder="07XXXXXXXX"
+          />
+          <InputError class="mt-2" :message="errors.phone" />
+        </div>
+
+        <div class="grid gap-2">
+          <Label for="wa_number">WhatsApp number</Label>
+          <Input
+            id="wa_number"
+            type="tel"
+            class="mt-1 block w-full"
+            name="wa_number"
+            :default-value="user.wa_number ?? ''"
+            placeholder="07XXXXXXXX"
+          />
+          <InputError class="mt-2" :message="errors.wa_number" />
+        </div>
       </div>
 
       <div class="flex items-center gap-4">

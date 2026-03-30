@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Admin;
 
 use App\Concerns\ProfileValidationRules;
+use App\Models\User;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -21,7 +22,7 @@ class StoreUserRequest extends FormRequest
     {
         return [
             ...$this->profileRules(),
-            'phone' => ['required', 'string', 'max:255'],
+            'phone' => ['required', 'string', 'max:255', Rule::unique(User::class)],
             'address' => ['required', 'string', 'max:255'],
             'wa_number' => ['nullable', 'string', 'max:255'],
             'password' => ['required', 'string', 'confirmed', Password::defaults()],

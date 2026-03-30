@@ -64,6 +64,24 @@ test('a user can be created with roles', function () {
         ->and($user->hasRole('User'))->toBeTrue();
 });
 
+test('a user cannot be created with a duplicate phone number', function () {
+    User::factory()->create(['phone' => '0771234567']);
+
+    $response = $this->actingAs($this->admin)->post(route('admin.users.store'), [
+        'first_name' => 'New',
+        'last_name' => 'User',
+        'phone' => '0771234567',
+        'address' => '123 Main Street',
+        'wa_number' => null,
+        'email' => 'new.user@example.com',
+        'password' => 'password',
+        'password_confirmation' => 'password',
+        'roles' => ['User'],
+    ]);
+
+    $response->assertSessionHasErrors('phone');
+});
+
 test('a user can be updated and their roles synced', function () {
     $user = User::factory()->create();
     $user->assignRole('User');
