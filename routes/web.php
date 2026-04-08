@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Auth\OtpLoginController;
 use App\Http\Controllers\BillController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\MemberPaymentController;
@@ -9,6 +10,11 @@ use App\Http\Controllers\WaterAccountController;
 use Illuminate\Support\Facades\Route;
 
 Route::inertia('/', 'Welcome')->name('home');
+
+Route::middleware(['guest', 'throttle:otp'])->prefix('login/otp')->name('login.otp.')->group(function () {
+    Route::post('request', [OtpLoginController::class, 'request'])->name('request');
+    Route::post('verify', [OtpLoginController::class, 'verify'])->name('verify');
+});
 
 Route::prefix('pay')->name('pay.')->group(function () {
     Route::get('', [PublicPaymentController::class, 'show'])->name('show');

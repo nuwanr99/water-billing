@@ -35,4 +35,11 @@ return [
         ],
     ],
 
+    'hosthere_whatsapp' => [
+        'base_url' => env('HOSTHERE_WHATSAPP_BASE_URL', 'https://wa.hosthere.lk/api'),
+        'api_secret' => env('HOSTHERE_WHATSAPP_API_SECRET'),
+        'account' => env('HOSTHERE_WHATSAPP_ACCOUNT'),
+        'timeout' => env('HOSTHERE_WHATSAPP_TIMEOUT', 15),
+    ],
+
 ];
