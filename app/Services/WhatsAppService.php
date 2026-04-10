@@ -26,6 +26,35 @@ class WhatsAppService
      */
     public function sendText(string $recipient, string $message): bool
     {
+        return $this->send([
+            'recipient' => $this->normalizeNumber($recipient),
+            'message' => $message,
+            'type' => 'text',
+        ]);
+    }
+
+    /**
+     * Send a message with a document attached as a direct multipart upload.
+     * Returns true when the gateway accepted it.
+     */
+    public function sendDocument(string $recipient, string $message, string $fileName, string $fileContents): bool
+    {
+        return $this->send([
+            'recipient' => $this->normalizeNumber($recipient),
+            'message' => $message,
+            'type' => 'document',
+        ], attachment: ['name' => 'document_file', 'contents' => $fileContents, 'filename' => $fileName]);
+    }
+
+    /**
+     * POST a payload to the gateway, optionally with a file part. The
+     * credentials are merged in here so callers only supply message fields.
+     *
+     * @param  array<string, string>  $payload
+     * @param  array{name: string, contents: string, filename: string}|null  $attachment
+     */
+    protected function send(array $payload, ?array $attachment = null): bool
+    {
         if (! $this->configured()) {
             report(new \RuntimeException('WhatsApp gateway is not configured; message not sent.'));
 
@@ -35,16 +64,18 @@ class WhatsAppService
         $url = rtrim((string) config('services.hosthere_whatsapp.base_url'), '/').'/send/whatsapp';
 
         try {
-            $response = Http::asForm()
-                ->acceptJson()
-                ->timeout((int) config('services.hosthere_whatsapp.timeout', 15))
-                ->post($url, [
-                    'secret' => (string) config('services.hosthere_whatsapp.api_secret'),
-                    'account' => (string) config('services.hosthere_whatsapp.account'),
-                    'recipient' => $this->normalizeNumber($recipient),
-                    'message' => $message,
-                    'type' => 'text',
-                ]);
+            $request = Http::acceptJson()
+                ->timeout((int) config('services.hosthere_whatsapp.timeout', 15));
+
+            $request = $attachment === null
+                ? $request->asForm()
+                : $request->attach($attachment['name'], $attachment['contents'], $attachment['filename']);
+
+            $response = $request->post($url, [
+                'secret' => (string) config('services.hosthere_whatsapp.api_secret'),
+                'account' => (string) config('services.hosthere_whatsapp.account'),
+                ...$payload,
+            ]);
         } catch (Throwable $exception) {
             report($exception);
 

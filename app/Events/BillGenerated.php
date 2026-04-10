@@ -8,8 +8,8 @@ use Illuminate\Foundation\Events\Dispatchable;
 
 /**
  * Fired when a bill is generated at reading confirmation (D-14). Dispatched
- * only after the generation transaction commits. The notification listener
- * ships in Phase 5; until then the event is the integration point only.
+ * only after the generation transaction commits. Listened to by
+ * SendBillWhatsAppNotification, which queues WhatsApp delivery of the bill.
  */
 class BillGenerated implements ShouldDispatchAfterCommit
 {

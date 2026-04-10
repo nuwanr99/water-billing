@@ -228,8 +228,10 @@ class BillGenerationService
 
     /**
      * The immutable breakdown persisted on the bill (D-06/D-25/D-27):
-     * reading values, tier allocation, the presented ledger entries, and
-     * the statement-equation summary the printout renders.
+     * reading values, tier allocation, the presented ledger entries, the
+     * statement-equation summary the printout renders, and the customer
+     * notices frozen with the bill (a single payment reminder for now; a
+     * fuller notification engine may feed this later).
      *
      * @param  array{consumption: float, tiers: list<array<string, mixed>>, usage_charge: float, service_charge: float, total: float}  $tariff
      * @param  Collection<int, AccountLedgerEntry>  $presented
@@ -237,6 +239,8 @@ class BillGenerationService
      */
     protected function snapshot(MeterReading $reading, array $tariff, ?Bill $previousBill, Collection $presented, float $previousBalance): array
     {
+        $dueDate = now()->addDays((int) config('billing.due_days'));
+
         $payments = $presented
             ->filter(fn (AccountLedgerEntry $entry): bool => $entry->entry_type === AccountLedgerEntryType::Payment)
             ->sum(fn (AccountLedgerEntry $entry): float => abs((float) $entry->amount));
@@ -277,6 +281,9 @@ class BillGenerationService
                 'this_month' => $tariff['total'],
                 'previous_balance' => $previousBalance,
                 'total_due' => round($previousBalance + $tariff['total'], 2),
+            ],
+            'notices' => [
+                __('කරුණාකර :date දිනට පෙර ගෙවීම් සිදු කරන්න.', ['date' => $dueDate->format('d M Y')]),
             ],
         ];
     }

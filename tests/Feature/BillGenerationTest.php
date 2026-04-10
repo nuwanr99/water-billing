@@ -54,7 +54,8 @@ test('confirming a reading generates an auto-approved bill with correct math', f
         ->and($bill->status)->toBe(BillStatus::Approved)
         ->and($bill->is_current)->toBeTrue()
         ->and($bill->bill_number)->toStartWith('BILL-')
-        ->and($bill->breakdown['summary']['total_due'])->toBe(287.5);
+        ->and($bill->breakdown['summary']['total_due'])->toBe(287.5)
+        ->and($bill->breakdown['notices'])->toBe(['කරුණාකර '.$bill->due_date->format('d M Y').' දිනට පෙර ගෙවීම් සිදු කරන්න.']);
 
     expect(app(AccountLedgerService::class)->balanceFor($account))->toBe(287.50);
 

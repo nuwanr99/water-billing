@@ -38,6 +38,7 @@ type BillBreakdown = {
   usage_charge: number;
   service_charge: number;
   presented_entries: PresentedEntry[];
+  notices?: string[];
   summary: {
     previous_due: number;
     payments: number;
@@ -120,6 +121,8 @@ const entryTypeLabels: Record<string, string> = {
 const debitEntries = computed(() =>
   props.bill.breakdown.presented_entries.filter((entry) => entry.amount > 0),
 );
+
+const notices = computed(() => props.bill.breakdown.notices ?? []);
 
 const entryLabel = (entry: PresentedEntry): string =>
   entry.description ?? entryTypeLabels[entry.type] ?? entry.type;
@@ -379,13 +382,19 @@ const printBill = (): void => {
         </div>
         <div class="hr"></div>
 
-        <div class="no-break relative z-40">
-          <div class="topic">නිවේදන:</div>
-          <div class="mt-1 leading-tight">
-            {{ bill.due_date }} දිනට පෙර භාණ්ඩාගාරික වෙත ගෙවීම් සිදු කරන්න.
+        <template v-if="notices.length > 0">
+          <div class="no-break relative z-40">
+            <div class="topic">නිවේදන:</div>
+            <div
+              v-for="(notice, index) in notices"
+              :key="index"
+              class="mt-1 leading-tight"
+            >
+              {{ notice }}
+            </div>
           </div>
-        </div>
-        <div class="hr"></div>
+          <div class="hr"></div>
+        </template>
 
         <div class="no-break relative z-40">
           <div class="center">
