@@ -8,7 +8,8 @@ use Illuminate\Foundation\Events\Dispatchable;
 
 /**
  * Fired when a payment completes (D-28). Dispatched only after the posting
- * transaction commits. The receipt notification listener ships in Phase 5.
+ * transaction commits. Listened to by SendReceiptWhatsAppNotification,
+ * which queues WhatsApp delivery of the receipt.
  */
 class PaymentReceived implements ShouldDispatchAfterCommit
 {

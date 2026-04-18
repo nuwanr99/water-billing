@@ -1,0 +1,81 @@
+<?php
+
+namespace App\Services;
+
+use Illuminate\Support\Facades\File;
+use Mpdf\Config\ConfigVariables;
+use Mpdf\Config\FontVariables;
+use Mpdf\Mpdf;
+use Mpdf\Output\Destination;
+
+/**
+ * Base for the Sinhala 78mm ticket PDFs (bill, receipt) delivered digitally.
+ * Uses mPDF because Sinhala needs OpenType shaping (vowel reordering,
+ * conjuncts) that dompdf cannot do, with the ticket's Noto Serif Sinhala
+ * face (a pre-2022 build — newer ones use MarkGlyphSets, which mPDF cannot
+ * parse).
+ */
+abstract class TicketPdfService
+{
+    protected const TICKET_WIDTH_MM = 78;
+
+    protected const MARGIN_MM = 3;
+
+    /**
+     * Render ticket HTML as a single page trimmed to its content — matching
+     * the printed ticket's continuous-roll auto length. First pass measures
+     * on an oversized page, second pass re-renders at the measured height.
+     */
+    protected function renderTicket(string $html): string
+    {
+        $measure = $this->writeTicket($html, 600);
+
+        if ($measure->page === 1) {
+            $trimmed = $this->writeTicket($html, ceil($measure->y) + self::MARGIN_MM);
+
+            return $trimmed->Output('', Destination::STRING_RETURN);
+        }
+
+        return $measure->Output('', Destination::STRING_RETURN);
+    }
+
+    /**
+     * Write the ticket HTML onto a fresh document of the given page height.
+     */
+    protected function writeTicket(string $html, float $heightMm): Mpdf
+    {
+        $tempDir = storage_path('app/mpdf');
+        File::ensureDirectoryExists($tempDir);
+
+        $defaultConfig = (new ConfigVariables)->getDefaults();
+        $defaultFontConfig = (new FontVariables)->getDefaults();
+
+        $mpdf = new Mpdf([
+            'mode' => 'utf-8',
+            'format' => [self::TICKET_WIDTH_MM, $heightMm],
+            'margin_left' => self::MARGIN_MM,
+            'margin_right' => self::MARGIN_MM,
+            'margin_top' => self::MARGIN_MM,
+            'margin_bottom' => self::MARGIN_MM,
+            'fontDir' => array_merge($defaultConfig['fontDir'], [resource_path('fonts')]),
+            'fontdata' => $defaultFontConfig['fontdata'] + [
+                'notoserifsinhala' => [
+                    'R' => 'NotoSerifSinhala-Regular.ttf',
+                    'B' => 'NotoSerifSinhala-Bold.ttf',
+                    'useOTL' => 0xFF,
+                ],
+            ],
+            'default_font' => 'notoserifsinhala',
+            // The archived Noto Serif Sinhala build carries no Latin glyphs;
+            // substitute them from FreeSerif, as the browser print's font
+            // stack does with system fonts.
+            'useSubstitutions' => true,
+            'backupSubsFont' => ['freeserif'],
+            'tempDir' => $tempDir,
+        ]);
+
+        $mpdf->WriteHTML($html);
+
+        return $mpdf;
+    }
+}

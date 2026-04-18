@@ -9,7 +9,7 @@ use App\Models\WaterAccount;
 use App\Services\AccountLedgerService;
 use App\Services\PayHereService;
 use App\Services\PaymentService;
-use Barryvdh\DomPDF\Facade\Pdf;
+use App\Services\ReceiptPdfService;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -141,21 +141,17 @@ class PublicPaymentController extends Controller
     }
 
     /**
-     * Download the completed payment's receipt as a PDF.
+     * Download the completed payment's receipt as a PDF — the same ticket
+     * document WhatsApp delivery attaches.
      */
-    public function receiptPdf(Payment $payment): SymfonyResponse
+    public function receiptPdf(Payment $payment, ReceiptPdfService $receiptPdf): SymfonyResponse
     {
         abort_unless($payment->status === PaymentStatus::Completed, 404);
 
-        $payment->load(['waterAccount.owner', 'ledgerEntry', 'destinationAccount:id,name']);
-
-        return Pdf::loadView('pdf.receipt', [
-            'payment' => $payment,
-            'waterAccount' => $payment->waterAccount,
-            'orgName' => config('app.name'),
-        ])
-            ->setPaper('a5')
-            ->download("{$payment->receipt_number}.pdf");
+        return response($receiptPdf->render($payment), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => "attachment; filename=\"{$payment->receipt_number}.pdf\"",
+        ]);
     }
 
     /**
