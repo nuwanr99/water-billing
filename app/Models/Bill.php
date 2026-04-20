@@ -4,8 +4,10 @@ namespace App\Models;
 
 use App\Enums\BillStatus;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 
 /**
@@ -40,6 +42,7 @@ use Illuminate\Support\Carbon;
  * @property-read User $generator
  * @property-read AccountLedgerEntry $ledgerEntry
  * @property-read Bill|null $supersededBill
+ * @property-read Collection<int, BillReminder> $reminders
  */
 #[Fillable(['bill_number', 'water_account_id', 'meter_reading_id', 'billing_month', 'is_current', 'usage_charge', 'service_charge', 'monthly_charge', 'previous_balance', 'total_due', 'breakdown', 'status', 'due_date', 'approved_at', 'generated_by', 'account_ledger_entry_id', 'is_reissue', 'supersedes_bill_id'])]
 class Bill extends Model
@@ -114,5 +117,15 @@ class Bill extends Model
     public function supersededBill(): BelongsTo
     {
         return $this->belongsTo(Bill::class, 'supersedes_bill_id');
+    }
+
+    /**
+     * Get the WhatsApp payment reminders sent for the bill.
+     *
+     * @return HasMany<BillReminder, $this>
+     */
+    public function reminders(): HasMany
+    {
+        return $this->hasMany(BillReminder::class);
     }
 }
