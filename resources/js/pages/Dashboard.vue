@@ -6,9 +6,11 @@ import {
   FileText,
   Gauge,
   MapPin,
-  Receipt,
+  MessageSquareWarning,
+  Plus,
 } from '@lucide/vue';
 import { computed } from 'vue';
+import ComplaintStatusBadge from '@/components/ComplaintStatusBadge.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -19,8 +21,14 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import WaterAccountStatusBadge from '@/components/WaterAccountStatusBadge.vue';
+import type { ComplaintStatus } from '@/lib/complaints';
 import { formatReading } from '@/lib/utils';
 import { dashboard } from '@/routes';
+import {
+  create as createComplaint,
+  index as complaintsIndex,
+  show as showComplaint,
+} from '@/routes/my/complaints';
 import { index as waterAccountsIndex } from '@/routes/water-accounts';
 import type { WaterAccountStatus } from '@/types';
 
@@ -35,6 +43,14 @@ type CurrentAccount = {
   pay_url: string;
 };
 
+type RecentComplaint = {
+  id: number;
+  complaint_number: string;
+  subject: string;
+  status: ComplaintStatus;
+  submitted_at: string;
+};
+
 defineProps<{
   currentAccount: CurrentAccount | null;
   latestReading: {
@@ -43,6 +59,11 @@ defineProps<{
     date: string;
   } | null;
   activeAccountsCount: number;
+  complaints: {
+    can_submit: boolean;
+    open_count: number;
+    recent: RecentComplaint[];
+  };
 }>();
 
 defineOptions({
@@ -67,26 +88,6 @@ const sample = {
   currentBill: 'Rs. 1,250.00',
   billDueDate: 'Due 15 Jul 2026',
   usageByMonth: [12, 15, 14, 18, 22, 19, 16, 20, 17, 15, 21, 18],
-  activity: [
-    {
-      icon: Receipt,
-      title: 'June bill generated',
-      description: 'Rs. 1,250.00 · awaiting approval',
-      date: '01 Jul 2026',
-    },
-    {
-      icon: CreditCard,
-      title: 'May bill paid',
-      description: 'Rs. 1,180.00 · paid online',
-      date: '12 Jun 2026',
-    },
-    {
-      icon: Gauge,
-      title: 'Meter reading recorded',
-      description: '1,254 units · normal usage',
-      date: '28 Jun 2026',
-    },
-  ],
 };
 
 const months = [
@@ -339,49 +340,80 @@ const formatAmount = (value: number): string =>
           </CardContent>
         </Card>
       </div>
+    </template>
 
-      <Card>
-        <CardHeader>
-          <div class="flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <CardTitle class="text-base"> Recent activity </CardTitle>
-              <CardDescription>
-                Bills, payments, and readings will appear here
-              </CardDescription>
-            </div>
-            <Badge variant="secondary">Sample</Badge>
+    <Card>
+      <CardHeader>
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <CardTitle class="text-base">Your complaints</CardTitle>
+            <CardDescription>
+              Report a water supply issue and follow it to resolution
+            </CardDescription>
           </div>
-        </CardHeader>
-        <CardContent>
-          <ul class="divide-y">
-            <li
-              v-for="item in sample.activity"
-              :key="item.title"
-              class="flex items-center gap-3 py-3 first:pt-0 last:pb-0"
+          <div class="flex items-center gap-2">
+            <Badge v-if="complaints.open_count > 0" variant="secondary">
+              {{ complaints.open_count }} open
+            </Badge>
+            <Button
+              v-if="complaints.can_submit"
+              size="sm"
+              variant="outline"
+              as-child
+            >
+              <Link :href="createComplaint()">
+                <Plus class="size-4" />
+                Report an issue
+              </Link>
+            </Button>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <ul v-if="complaints.recent.length > 0" class="divide-y">
+          <li
+            v-for="complaint in complaints.recent"
+            :key="complaint.id"
+            class="py-3 first:pt-0 last:pb-0"
+          >
+            <Link
+              :href="showComplaint(complaint.id)"
+              class="flex items-center gap-3"
             >
               <div
                 class="flex size-9 shrink-0 items-center justify-center rounded-full bg-muted"
               >
-                <component
-                  :is="item.icon"
-                  class="size-4 text-muted-foreground"
-                />
+                <MessageSquareWarning class="size-4 text-muted-foreground" />
               </div>
               <div class="min-w-0 flex-1">
                 <p class="truncate text-sm font-medium">
-                  {{ item.title }}
+                  {{ complaint.subject }}
                 </p>
                 <p class="truncate text-xs text-muted-foreground">
-                  {{ item.description }}
+                  {{ complaint.complaint_number }} ·
+                  {{ complaint.submitted_at }}
                 </p>
               </div>
-              <span class="text-xs text-muted-foreground">
-                {{ item.date }}
-              </span>
-            </li>
-          </ul>
-        </CardContent>
-      </Card>
-    </template>
+              <ComplaintStatusBadge :status="complaint.status" />
+            </Link>
+          </li>
+        </ul>
+        <div v-else class="flex flex-col items-center gap-1 py-6 text-center">
+          <p class="text-sm font-medium">No complaints yet</p>
+          <p class="max-w-sm text-xs text-muted-foreground">
+            If something is wrong with your water supply, let the society office
+            know and track the fix here.
+          </p>
+        </div>
+      </CardContent>
+      <CardContent v-if="complaints.recent.length > 0" class="border-t pt-4">
+        <Link
+          :href="complaintsIndex()"
+          class="text-sm font-medium text-primary hover:underline"
+        >
+          View all complaints
+        </Link>
+      </CardContent>
+    </Card>
   </div>
 </template>

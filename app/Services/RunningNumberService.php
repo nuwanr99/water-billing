@@ -19,6 +19,7 @@ class RunningNumberService
         'charge' => 'CHG',
         'journal' => 'JRN',
         'receipt' => 'RCPT',
+        'complaint' => 'CMP',
     ];
 
     /**

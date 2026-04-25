@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -77,6 +78,28 @@ class User extends Authenticatable implements PasskeyUser
     public function waterAccounts(): HasMany
     {
         return $this->hasMany(WaterAccount::class);
+    }
+
+    /**
+     * Complaints the user submitted as a member.
+     *
+     * @return HasMany<Complaint, $this>
+     */
+    public function complaints(): HasMany
+    {
+        return $this->hasMany(Complaint::class);
+    }
+
+    /**
+     * Complaints the user handles as a staff assignee (D-48).
+     *
+     * @return BelongsToMany<Complaint, $this>
+     */
+    public function handledComplaints(): BelongsToMany
+    {
+        return $this->belongsToMany(Complaint::class, 'complaint_assignees')
+            ->withPivot(['assigned_by', 'assigned_at'])
+            ->withTimestamps();
     }
 
     /**

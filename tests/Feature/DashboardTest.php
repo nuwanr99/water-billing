@@ -40,7 +40,7 @@ test('the admin dashboard shows stats and recent users', function () {
         ->assertInertia(fn ($page) => $page
             ->component('admin/Dashboard')
             ->where('stats.users', 2)
-            ->where('stats.roles', 6)
+            ->where('stats.roles', 8)
             ->has('recentUsers')
         );
 });

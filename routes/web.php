@@ -1,10 +1,12 @@
 <?php
 
+use App\Http\Controllers\AttachmentController;
 use App\Http\Controllers\Auth\OtpLoginController;
 use App\Http\Controllers\BillController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\MemberPaymentController;
 use App\Http\Controllers\MeterReadingController;
+use App\Http\Controllers\My\ComplaintController as MyComplaintController;
 use App\Http\Controllers\PublicPaymentController;
 use App\Http\Controllers\WaterAccountController;
 use Illuminate\Support\Facades\Route;
@@ -49,6 +51,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('{waterAccount}', [MemberPaymentController::class, 'show'])->name('show');
         Route::post('{waterAccount}', [MemberPaymentController::class, 'checkout'])->name('checkout');
     });
+
+    Route::prefix('my/complaints')->name('my.complaints.')->group(function () {
+        Route::get('', [MyComplaintController::class, 'index'])->middleware('can:complaints.view-own')->name('index');
+        Route::get('create', [MyComplaintController::class, 'create'])->middleware('can:complaints.submit')->name('create');
+        Route::post('', [MyComplaintController::class, 'store'])->middleware('can:complaints.submit')->name('store');
+        Route::get('{complaint}', [MyComplaintController::class, 'show'])->name('show');
+        Route::post('{complaint}/reply', [MyComplaintController::class, 'reply'])->name('reply');
+        Route::post('{complaint}/close', [MyComplaintController::class, 'close'])->name('close');
+    });
+
+    Route::get('attachments/{attachment}', AttachmentController::class)->name('attachments.download');
 });
 
 require __DIR__.'/settings.php';

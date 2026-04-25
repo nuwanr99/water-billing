@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\WaterAccountStatus;
+use App\Models\Complaint;
 use App\Services\AccountLedgerService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -43,6 +44,21 @@ class DashboardController extends Controller
             'activeAccountsCount' => $user->waterAccounts
                 ->where('status', WaterAccountStatus::Active)
                 ->count(),
+            'complaints' => [
+                'can_submit' => $user->can('complaints.submit'),
+                'open_count' => $user->complaints()->where('status', '!=', 'closed')->count(),
+                'recent' => $user->complaints()
+                    ->latest('submitted_at')
+                    ->limit(3)
+                    ->get()
+                    ->map(fn (Complaint $complaint): array => [
+                        'id' => $complaint->id,
+                        'complaint_number' => $complaint->complaint_number,
+                        'subject' => $complaint->subject,
+                        'status' => $complaint->status->value,
+                        'submitted_at' => $complaint->submitted_at->toFormattedDateString(),
+                    ]),
+            ],
         ]);
     }
 }

@@ -66,6 +66,15 @@ class RolePermissionSeeder extends Seeder
             'payments.record-manual',
             'payments.reconcile',
         ],
+        'complaints' => [
+            'complaints.submit',
+            'complaints.view-own',
+            'complaints.view-all',
+            'complaints.manage',
+        ],
+        'settings' => [
+            'settings.manage',
+        ],
         'admin' => [
             'admin',
         ],
@@ -92,7 +101,11 @@ class RolePermissionSeeder extends Seeder
         $superAdminRole = Role::firstOrCreate(['name' => 'Super Admin', 'guard_name' => 'web']);
         Role::firstOrCreate(['name' => 'Admin', 'guard_name' => 'web']);
         Role::firstOrCreate(['name' => 'User', 'guard_name' => 'web']);
-        Role::firstOrCreate(['name' => 'Member', 'guard_name' => 'web']);
+
+        $memberRole = Role::firstOrCreate(['name' => 'Member', 'guard_name' => 'web']);
+        $memberRole->syncPermissions([
+            'complaints.submit', 'complaints.view-own',
+        ]);
 
         $waterControllerRole = Role::firstOrCreate(['name' => 'Water Controller', 'guard_name' => 'web']);
         $waterControllerRole->syncPermissions([
@@ -107,7 +120,16 @@ class RolePermissionSeeder extends Seeder
             'ledger.view', 'ledger.record-charge',
             'system-ledger.view', 'system-ledger.manage',
             'payments.view-all', 'payments.record-manual', 'payments.reconcile',
+            'complaints.view-all', 'complaints.manage', 'settings.manage',
         ]);
+
+        // The society office roles that triage complaints and dispatch work (D-46).
+        foreach (['Secretary', 'President'] as $officeRole) {
+            Role::firstOrCreate(['name' => $officeRole, 'guard_name' => 'web'])->syncPermissions([
+                'admin',
+                'complaints.view-all', 'complaints.manage', 'settings.manage',
+            ]);
+        }
 
         $superAdminRole->syncPermissions(Permission::all());
 

@@ -9,8 +9,10 @@ import {
   KeyRound,
   LayoutGrid,
   ListTree,
+  MessageSquareWarning,
   Receipt,
   ReceiptText,
+  Settings,
   ShieldCheck,
   Users,
 } from '@lucide/vue';
@@ -34,14 +36,17 @@ import { dashboard } from '@/routes';
 import { dashboard as adminDashboard } from '@/routes/admin';
 import { index as billingCategoriesIndex } from '@/routes/admin/billing-categories';
 import { index as adminBillsIndex } from '@/routes/admin/bills';
+import { index as adminComplaintsIndex } from '@/routes/admin/complaints';
 import { index as ledgerAccountsIndex } from '@/routes/admin/ledger-accounts';
 import { index as adminPaymentsIndex } from '@/routes/admin/payments';
 import { index as permissionsIndex } from '@/routes/admin/permissions';
 import { index as rolesIndex } from '@/routes/admin/roles';
+import { edit as notificationSettings } from '@/routes/admin/settings/notifications';
 import { index as systemLedgerIndex } from '@/routes/admin/system-ledger';
 import { index as usersIndex } from '@/routes/admin/users';
 import { index as adminWaterAccountsIndex } from '@/routes/admin/water-accounts';
 import { index as meterReadingsIndex } from '@/routes/meter-readings';
+import { index as myComplaintsIndex } from '@/routes/my/complaints';
 import { index as waterAccountsIndex } from '@/routes/water-accounts';
 import type { NavItem } from '@/types';
 
@@ -73,6 +78,14 @@ const mainNavItems = computed<NavItem[]>(() => {
       title: 'Meter readings',
       href: meterReadingsIndex(),
       icon: Gauge,
+    });
+  }
+
+  if (hasPermission('complaints.view-own')) {
+    items.push({
+      title: 'My complaints',
+      href: myComplaintsIndex(),
+      icon: MessageSquareWarning,
     });
   }
 
@@ -120,6 +133,14 @@ const adminNavItems = computed<NavItem[]>(() => {
     });
   }
 
+  if (hasPermission('complaints.view-all')) {
+    items.push({
+      title: 'Complaints',
+      href: adminComplaintsIndex(),
+      icon: MessageSquareWarning,
+    });
+  }
+
   if (hasPermission('system-ledger.view')) {
     items.push({
       title: 'System ledger',
@@ -142,6 +163,14 @@ const adminNavItems = computed<NavItem[]>(() => {
       title: 'Permissions',
       href: permissionsIndex(),
       icon: KeyRound,
+    });
+  }
+
+  if (hasPermission('settings.manage')) {
+    items.push({
+      title: 'Settings',
+      href: notificationSettings(),
+      icon: Settings,
     });
   }
 

@@ -3,10 +3,12 @@
 use App\Http\Controllers\Admin\BillController;
 use App\Http\Controllers\Admin\BillingCategoryController;
 use App\Http\Controllers\Admin\ChargeController;
+use App\Http\Controllers\Admin\ComplaintController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\PaymentController;
 use App\Http\Controllers\Admin\PermissionController;
 use App\Http\Controllers\Admin\RoleController;
+use App\Http\Controllers\Admin\SettingController;
 use App\Http\Controllers\Admin\SystemLedgerAccountController;
 use App\Http\Controllers\Admin\SystemLedgerEntryController;
 use App\Http\Controllers\Admin\UserController;
@@ -95,4 +97,20 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'verified', 'can:adm
     });
 
     Route::get('/permissions', [PermissionController::class, 'index'])->middleware('can:permissions.view')->name('permissions.index');
+
+    Route::prefix('complaints')->name('complaints.')->group(function () {
+        Route::get('/', [ComplaintController::class, 'index'])->middleware('can:complaints.view-all')->name('index');
+        Route::get('/handlers', [ComplaintController::class, 'handlers'])->middleware('can:complaints.view-all')->name('handlers');
+        Route::get('/{complaint}', [ComplaintController::class, 'show'])->middleware('can:complaints.view-all')->name('show');
+        Route::post('/{complaint}/assign', [ComplaintController::class, 'assign'])->middleware('can:complaints.manage')->name('assign');
+        Route::post('/{complaint}/reply', [ComplaintController::class, 'reply'])->middleware('can:complaints.manage')->name('reply');
+        Route::post('/{complaint}/close', [ComplaintController::class, 'close'])->middleware('can:complaints.manage')->name('close');
+    });
+
+    Route::prefix('settings')->name('settings.')->group(function () {
+        Route::redirect('/', '/admin/settings/notifications')->name('index');
+        Route::get('/users', [SettingController::class, 'users'])->middleware('can:settings.manage')->name('users');
+        Route::get('/notifications', [SettingController::class, 'notifications'])->middleware('can:settings.manage')->name('notifications.edit');
+        Route::put('/notifications', [SettingController::class, 'updateNotifications'])->middleware('can:settings.manage')->name('notifications.update');
+    });
 });
