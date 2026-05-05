@@ -72,6 +72,13 @@ class RolePermissionSeeder extends Seeder
             'complaints.view-all',
             'complaints.manage',
         ],
+        'maintenance-jobs' => [
+            'maintenance-jobs.view-assigned',
+            'maintenance-jobs.view-all',
+            'maintenance-jobs.create',
+            'maintenance-jobs.assign',
+            'maintenance-jobs.update-status',
+        ],
         'settings' => [
             'settings.manage',
         ],
@@ -105,12 +112,14 @@ class RolePermissionSeeder extends Seeder
         $memberRole = Role::firstOrCreate(['name' => 'Member', 'guard_name' => 'web']);
         $memberRole->syncPermissions([
             'complaints.submit', 'complaints.view-own',
+            'maintenance-jobs.view-assigned', 'maintenance-jobs.update-status',
         ]);
 
         $waterControllerRole = Role::firstOrCreate(['name' => 'Water Controller', 'guard_name' => 'web']);
         $waterControllerRole->syncPermissions([
             'readings.view', 'readings.create', 'readings.edit',
             'bills.view', 'bills.generate', 'bills.print',
+            'maintenance-jobs.view-assigned', 'maintenance-jobs.update-status',
         ]);
 
         $treasurerRole = Role::firstOrCreate(['name' => 'Treasurer', 'guard_name' => 'web']);
@@ -121,6 +130,8 @@ class RolePermissionSeeder extends Seeder
             'system-ledger.view', 'system-ledger.manage',
             'payments.view-all', 'payments.record-manual', 'payments.reconcile',
             'complaints.view-all', 'complaints.manage', 'settings.manage',
+            'maintenance-jobs.view-assigned', 'maintenance-jobs.view-all',
+            'maintenance-jobs.create', 'maintenance-jobs.assign', 'maintenance-jobs.update-status',
         ]);
 
         // The society office roles that triage complaints and dispatch work (D-46).
@@ -128,6 +139,8 @@ class RolePermissionSeeder extends Seeder
             Role::firstOrCreate(['name' => $officeRole, 'guard_name' => 'web'])->syncPermissions([
                 'admin',
                 'complaints.view-all', 'complaints.manage', 'settings.manage',
+                'maintenance-jobs.view-assigned', 'maintenance-jobs.view-all',
+                'maintenance-jobs.create', 'maintenance-jobs.assign', 'maintenance-jobs.update-status',
             ]);
         }
 

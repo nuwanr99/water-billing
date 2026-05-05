@@ -3,19 +3,22 @@
 namespace App\Services;
 
 use App\Enums\ComplaintStatus;
+use App\Enums\MaintenanceJobStatus;
 use App\Events\ComplaintAssigned;
 use App\Events\ComplaintClosed;
 use App\Events\ComplaintReplied;
 use App\Events\ComplaintSubmitted;
+use App\Models\Attachment;
 use App\Models\Complaint;
 use App\Models\ComplaintMessage;
+use App\Models\MaintenanceJob;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
- * The sole writer for complaints (spec §5.6). Every mutation runs in a
+ * The writer and gatekeeper for complaints (spec §5.6). Every mutation runs in a
  * transaction, records an audit entry, writes to the thread, and fires the
  * after-commit event that drives WhatsApp routing (§4).
  */
@@ -103,7 +106,7 @@ class ComplaintService
             }
 
             $names = User::query()->whereIn('id', $handlerIds)->get()->pluck('name')->join(', ');
-            $this->postSystemMessage($complaint, "පැමිණිල්ල {$names} වෙත පවරන ලදී.");
+            $this->postSystemMessage($complaint, "Assigned to {$names}.");
 
             $this->audit->log('complaint.assigned', $complaint, [
                 'handler_ids' => $handlerIds,
@@ -158,7 +161,7 @@ class ComplaintService
                 'closed_at' => now(),
             ]);
 
-            $this->postSystemMessage($complaint, "පැමිණිල්ල වසා දමන ලදී.\n{$note}");
+            $this->postSystemMessage($complaint, "Complaint closed.\n{$note}");
 
             $this->audit->log('complaint.closed', $complaint, [
                 'closed_by' => $actor->id,
@@ -168,6 +171,39 @@ class ComplaintService
         ComplaintClosed::dispatch($complaint->refresh(), $actor);
 
         return $complaint;
+    }
+
+    /**
+     * Record on the complaint thread that a job was linked, moving an open
+     * complaint into progress (D-48). Called inside the job creation
+     * transaction — it does not notify (system messages are silent).
+     */
+    public function noteJobLinked(Complaint $complaint, MaintenanceJob $job): void
+    {
+        if ($complaint->status === ComplaintStatus::Open) {
+            $complaint->update(['status' => ComplaintStatus::InProgress]);
+        }
+
+        $this->postSystemMessage($complaint, "Maintenance job {$job->job_number} linked.");
+    }
+
+    /**
+     * Mirror a linked job's status change onto the complaint thread so the
+     * ticket reflects the work's progress. Silent by design — the member
+     * hears the outcome only when an admin closes the complaint (§4, step 4).
+     */
+    public function noteJobStatusChanged(Complaint $complaint, MaintenanceJob $job, MaintenanceJobStatus $to): void
+    {
+        $line = match ($to) {
+            MaintenanceJobStatus::InProgress => "Maintenance job {$job->job_number} started.",
+            MaintenanceJobStatus::Completed => "Maintenance job {$job->job_number} completed.",
+            MaintenanceJobStatus::Cancelled => "Maintenance job {$job->job_number} cancelled.",
+            default => "Maintenance job {$job->job_number} updated.",
+        };
+
+        $notes = $to === MaintenanceJobStatus::Completed ? (string) $job->completion_notes : '';
+
+        $this->postSystemMessage($complaint, trim($notes !== '' ? "{$line}\n{$notes}" : $line));
     }
 
     /**
@@ -218,5 +254,157 @@ class ComplaintService
                 'status' => 'This complaint is closed and can no longer be updated.',
             ]);
         }
+    }
+
+    /**
+     * The ticket header for the Inertia detail pages.
+     *
+     * @return array<string, mixed>
+     */
+    public function summary(Complaint $complaint): array
+    {
+        $complaint->loadMissing(['member:id,first_name,last_name', 'waterAccount:id,account_number,connection_address', 'handlers:id,first_name,last_name']);
+
+        return [
+            'id' => $complaint->id,
+            'complaint_number' => $complaint->complaint_number,
+            'subject' => $complaint->subject,
+            'category' => $complaint->category->value,
+            'status' => $complaint->status->value,
+            'member' => [
+                'id' => $complaint->member->id,
+                'name' => $complaint->member->name,
+            ],
+            'water_account' => $complaint->waterAccount === null ? null : [
+                'id' => $complaint->waterAccount->id,
+                'account_number' => $complaint->waterAccount->account_number,
+                'connection_address' => $complaint->waterAccount->connection_address,
+            ],
+            'handlers' => $complaint->handlers->map(fn (User $handler): array => [
+                'id' => $handler->id,
+                'name' => $handler->name,
+            ])->all(),
+            'closure_note' => $complaint->closure_note,
+            'submitted_at' => $complaint->submitted_at->format('d M Y, g:i A'),
+            'closed_at' => $complaint->closed_at?->format('d M Y, g:i A'),
+        ];
+    }
+
+    /**
+     * The maintenance jobs spun off this complaint, newest first.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function jobs(Complaint $complaint): array
+    {
+        return $complaint->jobs()
+            ->with('assignees:id,first_name,last_name')
+            ->latest()
+            ->get()
+            ->map(fn (MaintenanceJob $job): array => [
+                'id' => $job->id,
+                'job_number' => $job->job_number,
+                'title' => $job->title,
+                'status' => $job->status->value,
+                'assignees' => $job->assignees->pluck('name')->all(),
+                'scheduled_date' => $job->scheduled_date->format('d M Y'),
+            ])
+            ->all();
+    }
+
+    /**
+     * The conversation, oldest first, from the viewer's perspective.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function thread(Complaint $complaint, User $viewer): array
+    {
+        $complaint->loadMissing(['messages.author:id,first_name,last_name', 'messages.attachments']);
+
+        return $complaint->messages->map(fn (ComplaintMessage $message): array => [
+            'id' => $message->id,
+            'body' => $message->body,
+            'is_system' => $message->isSystem(),
+            'is_mine' => $message->user_id === $viewer->id,
+            'author' => $message->author?->name,
+            'created_at' => $message->created_at?->format('d M Y, g:i A'),
+            'attachments' => $message->attachments->map(fn (Attachment $attachment): array => [
+                'id' => $attachment->id,
+                'name' => $attachment->original_name,
+                'is_image' => $attachment->isImage(),
+                'url' => route('attachments.download', $attachment->id),
+            ])->all(),
+        ])->all();
+    }
+
+    /**
+     * Whether the user may view this complaint: the owning member, a handler,
+     * a linked-job assignee, or staff allowed to see all complaints.
+     */
+    public function canView(User $user, Complaint $complaint): bool
+    {
+        return $this->owns($user, $complaint)
+            || $user->can('complaints.view-all')
+            || $this->handles($user, $complaint)
+            || $this->assignedToLinkedJob($user, $complaint);
+    }
+
+    /**
+     * Whether the user may reply to this live complaint.
+     */
+    public function canReply(User $user, Complaint $complaint): bool
+    {
+        return $complaint->status->isLive() && (
+            $this->owns($user, $complaint)
+            || $this->handles($user, $complaint)
+            || $this->assignedToLinkedJob($user, $complaint)
+            || $user->can('complaints.manage')
+        );
+    }
+
+    /**
+     * Whether the user may assign handlers.
+     */
+    public function canAssign(User $user, Complaint $complaint): bool
+    {
+        return $user->can('complaints.manage');
+    }
+
+    /**
+     * Whether the user may close this live complaint: the owning member
+     * (self-close) or a manager.
+     */
+    public function canClose(User $user, Complaint $complaint): bool
+    {
+        return $complaint->status->isLive()
+            && ($this->owns($user, $complaint) || $user->can('complaints.manage'));
+    }
+
+    /**
+     * Whether the user submitted the complaint.
+     */
+    protected function owns(User $user, Complaint $complaint): bool
+    {
+        return $complaint->user_id === $user->id;
+    }
+
+    /**
+     * Whether the user is one of the complaint's handlers.
+     */
+    protected function handles(User $user, Complaint $complaint): bool
+    {
+        return $complaint->handlers()->whereKey($user->id)->exists();
+    }
+
+    /**
+     * Whether the user is assigned to a live job spun off this complaint —
+     * such assignees may read and reply to it.
+     */
+    protected function assignedToLinkedJob(User $user, Complaint $complaint): bool
+    {
+        return $complaint->jobs()
+            ->whereIn('status', ['assigned', 'in_progress'])
+            ->whereHas('assignees', fn ($query) => $query->whereKey($user->id))
+            ->exists();
     }
 }

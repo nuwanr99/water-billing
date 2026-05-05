@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\BillingCategoryController;
 use App\Http\Controllers\Admin\ChargeController;
 use App\Http\Controllers\Admin\ComplaintController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\MaintenanceJobController;
 use App\Http\Controllers\Admin\PaymentController;
 use App\Http\Controllers\Admin\PermissionController;
 use App\Http\Controllers\Admin\RoleController;
@@ -105,6 +106,18 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'verified', 'can:adm
         Route::post('/{complaint}/assign', [ComplaintController::class, 'assign'])->middleware('can:complaints.manage')->name('assign');
         Route::post('/{complaint}/reply', [ComplaintController::class, 'reply'])->middleware('can:complaints.manage')->name('reply');
         Route::post('/{complaint}/close', [ComplaintController::class, 'close'])->middleware('can:complaints.manage')->name('close');
+    });
+
+    Route::prefix('maintenance-jobs')->name('maintenance-jobs.')->group(function () {
+        Route::get('/', [MaintenanceJobController::class, 'index'])->middleware('can:maintenance-jobs.view-all')->name('index');
+        Route::get('/assignees', [MaintenanceJobController::class, 'assignees'])->middleware('can:maintenance-jobs.create')->name('assignees');
+        Route::get('/create', [MaintenanceJobController::class, 'create'])->middleware('can:maintenance-jobs.create')->name('create');
+        Route::post('/', [MaintenanceJobController::class, 'store'])->middleware('can:maintenance-jobs.create')->name('store');
+        Route::get('/{maintenanceJob}', [MaintenanceJobController::class, 'show'])->middleware('can:maintenance-jobs.view-all')->name('show');
+        Route::get('/{maintenanceJob}/edit', [MaintenanceJobController::class, 'edit'])->middleware('can:maintenance-jobs.assign')->name('edit');
+        Route::put('/{maintenanceJob}', [MaintenanceJobController::class, 'update'])->middleware('can:maintenance-jobs.assign')->name('update');
+        Route::post('/{maintenanceJob}/updates', [MaintenanceJobController::class, 'postUpdate'])->name('updates');
+        Route::post('/{maintenanceJob}/status', [MaintenanceJobController::class, 'status'])->middleware('can:maintenance-jobs.update-status')->name('status');
     });
 
     Route::prefix('settings')->name('settings.')->group(function () {

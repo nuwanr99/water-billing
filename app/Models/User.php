@@ -103,6 +103,28 @@ class User extends Authenticatable implements PasskeyUser
     }
 
     /**
+     * Maintenance jobs assigned to the user (D-49).
+     *
+     * @return BelongsToMany<MaintenanceJob, $this>
+     */
+    public function assignedJobs(): BelongsToMany
+    {
+        return $this->belongsToMany(MaintenanceJob::class, 'maintenance_job_assignees')
+            ->withPivot(['assigned_by', 'assigned_at'])
+            ->withTimestamps();
+    }
+
+    /**
+     * Maintenance jobs the user created.
+     *
+     * @return HasMany<MaintenanceJob, $this>
+     */
+    public function createdJobs(): HasMany
+    {
+        return $this->hasMany(MaintenanceJob::class, 'created_by');
+    }
+
+    /**
      * Resolve the user's currently selected water account: the persisted
      * last-used account when it is still theirs, then the first active
      * account. The selection lives on the users table, not in the

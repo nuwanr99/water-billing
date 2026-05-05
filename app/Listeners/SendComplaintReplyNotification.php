@@ -7,8 +7,9 @@ use App\Services\ComplaintNotifier;
 use Illuminate\Support\Str;
 
 /**
- * Routes a thread reply (§4): a member's reply reaches the staff
- * participants; a staff reply reaches the member.
+ * Notifies every complaint participant except the author when a reply is
+ * posted (§4): the member and the staff side (handlers plus any linked-job
+ * assignees) each hear about the other's activity.
  */
 class SendComplaintReplyNotification
 {
@@ -23,19 +24,14 @@ class SendComplaintReplyNotification
         $complaint = $message->complaint->loadMissing('member');
         $excerpt = Str::limit((string) $message->body, 120);
 
-        if ($message->user_id === $complaint->user_id) {
-            $this->notifier->notify(
-                $this->notifier->staffParticipants($complaint),
-                "පැමිණිල්ල {$complaint->complaint_number} සඳහා නව පිළිතුරක්.\n{$excerpt}",
-                excludeUserId: $message->user_id,
-            );
-
-            return;
-        }
+        $recipients = $this->notifier->staffParticipants($complaint)
+            ->push($complaint->member)
+            ->unique('id');
 
         $this->notifier->notify(
-            [$complaint->member],
-            "ඔබගේ පැමිණිල්ල ({$complaint->complaint_number}) යාවත්කාලීන විය.\n{$excerpt}",
+            $recipients,
+            "පැමිණිල්ල ({$complaint->complaint_number}) යාවත්කාලීන විය.\n{$excerpt}",
+            excludeUserId: $message->user_id,
         );
     }
 }

@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { Head, useForm } from '@inertiajs/vue3';
-import { CheckCircle2, MapPin } from '@lucide/vue';
+import { Head, Link, useForm } from '@inertiajs/vue3';
+import { CheckCircle2, MapPin, Plus, Wrench } from '@lucide/vue';
 import { ref } from 'vue';
 import ComplaintStatusBadge from '@/components/ComplaintStatusBadge.vue';
 import InputError from '@/components/InputError.vue';
+import JobStatusBadge from '@/components/JobStatusBadge.vue';
 import MessageThread from '@/components/MessageThread.vue';
 import MultiUserSelect from '@/components/MultiUserSelect.vue';
 import { Button } from '@/components/ui/button';
@@ -23,6 +24,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { complaintCategoryLabels } from '@/lib/complaints';
 import type { ComplaintCategory } from '@/lib/complaints';
 import type { ComplaintStatus } from '@/lib/complaints';
+import type { MaintenanceJobStatus } from '@/lib/jobs';
 import {
   assign,
   close,
@@ -30,6 +32,10 @@ import {
   index,
   reply,
 } from '@/routes/admin/complaints';
+import {
+  create as createJob,
+  show as jobShow,
+} from '@/routes/admin/maintenance-jobs';
 import type { ComboboxOption } from '@/types';
 
 type ThreadMessage = {
@@ -61,7 +67,15 @@ const props = defineProps<{
     closed_at: string | null;
   };
   thread: ThreadMessage[];
-  can: { assign: boolean; reply: boolean; close: boolean };
+  jobs: {
+    id: number;
+    job_number: string;
+    title: string;
+    status: MaintenanceJobStatus;
+    assignees: string[];
+    scheduled_date: string;
+  }[];
+  can: { assign: boolean; reply: boolean; close: boolean; create_job: boolean };
 }>();
 
 defineOptions({
@@ -242,6 +256,48 @@ const submitClose = (): void => {
                 Assign
               </Button>
             </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader
+            class="flex flex-row items-center justify-between gap-2 space-y-0"
+          >
+            <CardTitle class="flex items-center gap-2">
+              <Wrench class="size-4 text-muted-foreground" />
+              Jobs
+            </CardTitle>
+            <Button v-if="can.create_job" size="sm" variant="outline" as-child>
+              <Link :href="createJob({ query: { complaint: complaint.id } })">
+                <Plus class="size-4" />
+                Create job
+              </Link>
+            </Button>
+          </CardHeader>
+          <CardContent class="space-y-3">
+            <Link
+              v-for="job in jobs"
+              :key="job.id"
+              :href="jobShow(job.id)"
+              class="block rounded-lg border p-3 transition-colors hover:bg-muted/50"
+            >
+              <div class="flex items-center justify-between gap-2">
+                <span class="text-sm font-medium">{{ job.title }}</span>
+                <JobStatusBadge :status="job.status" />
+              </div>
+              <p class="mt-1 text-xs text-muted-foreground">
+                {{ job.job_number }} · {{ job.scheduled_date }}
+                <template v-if="job.assignees.length > 0">
+                  · {{ job.assignees.join(', ') }}
+                </template>
+              </p>
+            </Link>
+            <p v-if="jobs.length === 0" class="text-sm text-muted-foreground">
+              No jobs yet.
+              <template v-if="can.create_job">
+                Create one to dispatch the work.
+              </template>
+            </p>
           </CardContent>
         </Card>
       </div>

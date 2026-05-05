@@ -98,6 +98,16 @@ class Complaint extends Model
     }
 
     /**
+     * Maintenance jobs spun off this complaint (D-49).
+     *
+     * @return HasMany<MaintenanceJob, $this>
+     */
+    public function jobs(): HasMany
+    {
+        return $this->hasMany(MaintenanceJob::class);
+    }
+
+    /**
      * Whether the complaint has at least one handler.
      */
     public function isAssigned(): bool

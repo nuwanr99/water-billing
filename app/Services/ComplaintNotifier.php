@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Jobs\SendComplaintNotification;
 use App\Models\Complaint;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
 /**
@@ -26,10 +27,17 @@ class ComplaintNotifier
     public function staffParticipants(Complaint $complaint): Collection
     {
         $handlers = $complaint->handlers()->get();
-
-        return $handlers->isNotEmpty()
+        $base = $handlers->isNotEmpty()
             ? $handlers
             : $this->settings->complaintNotifyUsers();
+
+        $jobAssignees = User::query()
+            ->whereHas('assignedJobs', fn (Builder $query): Builder => $query
+                ->where('complaint_id', $complaint->id)
+                ->whereIn('status', ['assigned', 'in_progress']))
+            ->get();
+
+        return $base->concat($jobAssignees)->unique('id')->values();
     }
 
     /**

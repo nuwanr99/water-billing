@@ -4,6 +4,7 @@ import {
   ArrowLeftRight,
   Banknote,
   BookOpenText,
+  ClipboardList,
   Droplets,
   Gauge,
   KeyRound,
@@ -15,6 +16,7 @@ import {
   Settings,
   ShieldCheck,
   Users,
+  Wrench,
 } from '@lucide/vue';
 import { computed } from 'vue';
 import AccountSwitcher from '@/components/AccountSwitcher.vue';
@@ -38,6 +40,7 @@ import { index as billingCategoriesIndex } from '@/routes/admin/billing-categori
 import { index as adminBillsIndex } from '@/routes/admin/bills';
 import { index as adminComplaintsIndex } from '@/routes/admin/complaints';
 import { index as ledgerAccountsIndex } from '@/routes/admin/ledger-accounts';
+import { index as adminMaintenanceJobsIndex } from '@/routes/admin/maintenance-jobs';
 import { index as adminPaymentsIndex } from '@/routes/admin/payments';
 import { index as permissionsIndex } from '@/routes/admin/permissions';
 import { index as rolesIndex } from '@/routes/admin/roles';
@@ -47,6 +50,7 @@ import { index as usersIndex } from '@/routes/admin/users';
 import { index as adminWaterAccountsIndex } from '@/routes/admin/water-accounts';
 import { index as meterReadingsIndex } from '@/routes/meter-readings';
 import { index as myComplaintsIndex } from '@/routes/my/complaints';
+import { index as myJobsIndex } from '@/routes/my-jobs';
 import { index as waterAccountsIndex } from '@/routes/water-accounts';
 import type { NavItem } from '@/types';
 
@@ -86,6 +90,14 @@ const mainNavItems = computed<NavItem[]>(() => {
       title: 'My complaints',
       href: myComplaintsIndex(),
       icon: MessageSquareWarning,
+    });
+  }
+
+  if (hasPermission('maintenance-jobs.view-assigned')) {
+    items.push({
+      title: 'My jobs',
+      href: myJobsIndex(),
+      icon: ClipboardList,
     });
   }
 
@@ -138,6 +150,14 @@ const adminNavItems = computed<NavItem[]>(() => {
       title: 'Complaints',
       href: adminComplaintsIndex(),
       icon: MessageSquareWarning,
+    });
+  }
+
+  if (hasPermission('maintenance-jobs.view-all')) {
+    items.push({
+      title: 'Maintenance jobs',
+      href: adminMaintenanceJobsIndex(),
+      icon: Wrench,
     });
   }
 

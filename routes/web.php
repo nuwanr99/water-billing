@@ -7,6 +7,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\MemberPaymentController;
 use App\Http\Controllers\MeterReadingController;
 use App\Http\Controllers\My\ComplaintController as MyComplaintController;
+use App\Http\Controllers\My\JobController as MyJobController;
 use App\Http\Controllers\PublicPaymentController;
 use App\Http\Controllers\WaterAccountController;
 use Illuminate\Support\Facades\Route;
@@ -59,6 +60,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('{complaint}', [MyComplaintController::class, 'show'])->name('show');
         Route::post('{complaint}/reply', [MyComplaintController::class, 'reply'])->name('reply');
         Route::post('{complaint}/close', [MyComplaintController::class, 'close'])->name('close');
+    });
+
+    Route::prefix('my-jobs')->name('my-jobs.')->group(function () {
+        Route::get('', [MyJobController::class, 'index'])->middleware('can:maintenance-jobs.view-assigned')->name('index');
+        Route::get('{maintenanceJob}', [MyJobController::class, 'show'])->name('show');
+        Route::post('{maintenanceJob}/updates', [MyJobController::class, 'postUpdate'])->name('updates');
+        Route::post('{maintenanceJob}/status', [MyJobController::class, 'updateStatus'])->middleware('can:maintenance-jobs.update-status')->name('status');
     });
 
     Route::get('attachments/{attachment}', AttachmentController::class)->name('attachments.download');

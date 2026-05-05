@@ -9,7 +9,6 @@ use App\Libraries\Datatable;
 use App\Models\Complaint;
 use App\Models\User;
 use App\Services\ComplaintService;
-use App\Support\ComplaintPresenter;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -99,12 +98,14 @@ class ComplaintController extends Controller
     public function show(Request $request, Complaint $complaint): Response
     {
         return Inertia::render('admin/complaints/Show', [
-            'complaint' => ComplaintPresenter::summary($complaint),
-            'thread' => ComplaintPresenter::thread($complaint, $request->user()),
+            'complaint' => $this->complaints->summary($complaint),
+            'thread' => $this->complaints->thread($complaint, $request->user()),
+            'jobs' => $this->complaints->jobs($complaint),
             'can' => [
-                'assign' => $request->user()->can('assign', $complaint),
-                'reply' => $request->user()->can('reply', $complaint),
-                'close' => $request->user()->can('close', $complaint),
+                'assign' => $this->complaints->canAssign($request->user(), $complaint),
+                'reply' => $this->complaints->canReply($request->user(), $complaint),
+                'close' => $this->complaints->canClose($request->user(), $complaint),
+                'create_job' => $request->user()->can('maintenance-jobs.create') && $complaint->status->isLive(),
             ],
         ]);
     }
@@ -114,7 +115,7 @@ class ComplaintController extends Controller
      */
     public function assign(AssignComplaintRequest $request, Complaint $complaint): RedirectResponse
     {
-        $this->authorize('assign', $complaint);
+        abort_unless($this->complaints->canAssign($request->user(), $complaint), 403);
 
         $this->complaints->assign($complaint, $request->validated('handler_ids'), $request->user());
 
@@ -128,7 +129,7 @@ class ComplaintController extends Controller
      */
     public function reply(ReplyComplaintRequest $request, Complaint $complaint): RedirectResponse
     {
-        $this->authorize('reply', $complaint);
+        abort_unless($this->complaints->canReply($request->user(), $complaint), 403);
 
         $this->complaints->reply(
             $complaint,
@@ -145,7 +146,7 @@ class ComplaintController extends Controller
      */
     public function close(Request $request, Complaint $complaint): RedirectResponse
     {
-        $this->authorize('close', $complaint);
+        abort_unless($this->complaints->canClose($request->user(), $complaint), 403);
 
         $validated = $request->validate(['note' => ['required', 'string', 'max:2000']]);
 

@@ -8,7 +8,6 @@ use App\Http\Requests\ReplyComplaintRequest;
 use App\Http\Requests\StoreComplaintRequest;
 use App\Models\Complaint;
 use App\Services\ComplaintService;
-use App\Support\ComplaintPresenter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -86,14 +85,14 @@ class ComplaintController extends Controller
      */
     public function show(Request $request, Complaint $complaint): Response
     {
-        $this->authorize('view', $complaint);
+        abort_unless($this->complaints->canView($request->user(), $complaint), 403);
 
         return Inertia::render('my/complaints/Show', [
-            'complaint' => ComplaintPresenter::summary($complaint),
-            'thread' => ComplaintPresenter::thread($complaint, $request->user()),
+            'complaint' => $this->complaints->summary($complaint),
+            'thread' => $this->complaints->thread($complaint, $request->user()),
             'can' => [
-                'reply' => $request->user()->can('reply', $complaint),
-                'close' => $request->user()->can('close', $complaint),
+                'reply' => $this->complaints->canReply($request->user(), $complaint),
+                'close' => $this->complaints->canClose($request->user(), $complaint),
             ],
         ]);
     }
@@ -103,7 +102,7 @@ class ComplaintController extends Controller
      */
     public function reply(ReplyComplaintRequest $request, Complaint $complaint): RedirectResponse
     {
-        $this->authorize('reply', $complaint);
+        abort_unless($this->complaints->canReply($request->user(), $complaint), 403);
 
         $this->complaints->reply(
             $complaint,
@@ -120,7 +119,7 @@ class ComplaintController extends Controller
      */
     public function close(Request $request, Complaint $complaint): RedirectResponse
     {
-        $this->authorize('close', $complaint);
+        abort_unless($this->complaints->canClose($request->user(), $complaint), 403);
 
         $validated = $request->validate(['note' => ['nullable', 'string', 'max:2000']]);
 

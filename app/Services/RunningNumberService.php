@@ -20,6 +20,7 @@ class RunningNumberService
         'journal' => 'JRN',
         'receipt' => 'RCPT',
         'complaint' => 'CMP',
+        'job' => 'JOB',
     ];
 
     /**
