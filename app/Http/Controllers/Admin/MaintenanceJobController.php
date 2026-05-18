@@ -146,6 +146,7 @@ class MaintenanceJobController extends Controller
                 'update' => $request->user()->can('maintenance-jobs.assign'),
                 'post_update' => $this->jobs->canPostUpdate($request->user(), $maintenanceJob),
                 'change_status' => $this->jobs->canUpdateStatus($request->user(), $maintenanceJob),
+                'record_expense' => $request->user()->can('expenses.create'),
             ],
         ]);
     }

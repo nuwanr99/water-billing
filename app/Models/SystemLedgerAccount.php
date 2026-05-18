@@ -3,8 +3,10 @@
 namespace App\Models;
 
 use App\Enums\SystemLedgerAccountType;
+use Database\Factories\SystemLedgerAccountFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
@@ -27,6 +29,9 @@ use Illuminate\Support\Carbon;
 #[Fillable(['code', 'name', 'type', 'is_active'])]
 class SystemLedgerAccount extends Model
 {
+    /** @use HasFactory<SystemLedgerAccountFactory> */
+    use HasFactory;
+
     /**
      * Get the attributes that should be cast.
      *

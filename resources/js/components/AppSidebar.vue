@@ -7,6 +7,7 @@ import {
   ClipboardList,
   Droplets,
   Gauge,
+  HandCoins,
   KeyRound,
   LayoutGrid,
   ListTree,
@@ -39,6 +40,7 @@ import { dashboard as adminDashboard } from '@/routes/admin';
 import { index as billingCategoriesIndex } from '@/routes/admin/billing-categories';
 import { index as adminBillsIndex } from '@/routes/admin/bills';
 import { index as adminComplaintsIndex } from '@/routes/admin/complaints';
+import { index as adminExpensesIndex } from '@/routes/admin/expenses';
 import { index as ledgerAccountsIndex } from '@/routes/admin/ledger-accounts';
 import { index as adminMaintenanceJobsIndex } from '@/routes/admin/maintenance-jobs';
 import { index as adminPaymentsIndex } from '@/routes/admin/payments';
@@ -158,6 +160,14 @@ const adminNavItems = computed<NavItem[]>(() => {
       title: 'Maintenance jobs',
       href: adminMaintenanceJobsIndex(),
       icon: Wrench,
+    });
+  }
+
+  if (hasPermission('expenses.view')) {
+    items.push({
+      title: 'Expenses',
+      href: adminExpensesIndex(),
+      icon: HandCoins,
     });
   }
 

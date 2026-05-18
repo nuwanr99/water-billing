@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\BillingCategoryController;
 use App\Http\Controllers\Admin\ChargeController;
 use App\Http\Controllers\Admin\ComplaintController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\ExpenseController;
 use App\Http\Controllers\Admin\MaintenanceJobController;
 use App\Http\Controllers\Admin\PaymentController;
 use App\Http\Controllers\Admin\PermissionController;
@@ -86,6 +87,14 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'verified', 'can:adm
         Route::get('/{systemLedgerAccount}/edit', [SystemLedgerAccountController::class, 'edit'])->middleware('can:system-ledger.manage')->name('edit');
         Route::put('/{systemLedgerAccount}', [SystemLedgerAccountController::class, 'update'])->middleware('can:system-ledger.manage')->name('update');
         Route::delete('/{systemLedgerAccount}', [SystemLedgerAccountController::class, 'destroy'])->middleware('can:system-ledger.manage')->name('destroy');
+    });
+
+    Route::prefix('expenses')->name('expenses.')->group(function () {
+        Route::get('/', [ExpenseController::class, 'index'])->middleware('can:expenses.view')->name('index');
+        Route::get('/jobs', [ExpenseController::class, 'jobs'])->middleware('can:expenses.create')->name('jobs');
+        Route::get('/create', [ExpenseController::class, 'create'])->middleware('can:expenses.create')->name('create');
+        Route::post('/', [ExpenseController::class, 'store'])->middleware('can:expenses.create')->name('store');
+        Route::get('/{expense}', [ExpenseController::class, 'show'])->middleware('can:expenses.view')->name('show');
     });
 
     Route::prefix('billing-categories')->name('billing-categories.')->group(function () {

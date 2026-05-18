@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Head, Link, useForm } from '@inertiajs/vue3';
-import { MapPin, Pencil } from '@lucide/vue';
+import { HandCoins, MapPin, Pencil } from '@lucide/vue';
 import { ref } from 'vue';
 import InputError from '@/components/InputError.vue';
 import JobStatusBadge from '@/components/JobStatusBadge.vue';
@@ -21,6 +21,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import type { MaintenanceJobStatus } from '@/lib/jobs';
 import { show as complaintShow } from '@/routes/admin/complaints';
+import { create as createExpense } from '@/routes/admin/expenses';
 import { edit, index, status, updates } from '@/routes/admin/maintenance-jobs';
 
 type ThreadMessage = {
@@ -54,7 +55,12 @@ const props = defineProps<{
     } | null;
   };
   thread: ThreadMessage[];
-  can: { update: boolean; post_update: boolean; change_status: boolean };
+  can: {
+    update: boolean;
+    post_update: boolean;
+    change_status: boolean;
+    record_expense: boolean;
+  };
 }>();
 
 defineOptions({
@@ -63,7 +69,8 @@ defineOptions({
   },
 });
 
-const isLiveStatus = props.job.status === 'assigned' || props.job.status === 'in_progress';
+const isLiveStatus =
+  props.job.status === 'assigned' || props.job.status === 'in_progress';
 
 const startForm = useForm({ status: 'in_progress', notes: '' });
 
@@ -114,17 +121,26 @@ const submitCancel = (): void => {
         </p>
       </div>
 
-      <Button
-        v-if="can.update && isLiveStatus"
-        variant="outline"
-        size="sm"
-        as-child
-      >
-        <Link :href="edit(job.id)">
-          <Pencil class="size-4" />
-          Edit
-        </Link>
-      </Button>
+      <div class="flex items-center gap-2">
+        <Button v-if="can.record_expense" variant="outline" size="sm" as-child>
+          <Link :href="createExpense({ query: { job: job.id } })">
+            <HandCoins class="size-4" />
+            Record expense
+          </Link>
+        </Button>
+
+        <Button
+          v-if="can.update && isLiveStatus"
+          variant="outline"
+          size="sm"
+          as-child
+        >
+          <Link :href="edit(job.id)">
+            <Pencil class="size-4" />
+            Edit
+          </Link>
+        </Button>
+      </div>
     </div>
 
     <div class="mt-6 grid gap-6 lg:grid-cols-3">
@@ -182,10 +198,7 @@ const submitCancel = (): void => {
             <CardTitle>Assignees</CardTitle>
           </CardHeader>
           <CardContent class="space-y-4">
-            <div
-              v-if="job.assignees.length > 0"
-              class="flex flex-col gap-2"
-            >
+            <div v-if="job.assignees.length > 0" class="flex flex-col gap-2">
               <div
                 v-for="assignee in job.assignees"
                 :key="assignee.id"
@@ -212,14 +225,22 @@ const submitCancel = (): void => {
                 <p class="text-muted-foreground">{{ job.complaint.subject }}</p>
               </div>
             </div>
-            <p v-if="job.complaint.account_number" class="text-muted-foreground">
+            <p
+              v-if="job.complaint.account_number"
+              class="text-muted-foreground"
+            >
               Account {{ job.complaint.account_number }}
             </p>
-            <p v-if="job.complaint.connection_address" class="text-muted-foreground">
+            <p
+              v-if="job.complaint.connection_address"
+              class="text-muted-foreground"
+            >
               {{ job.complaint.connection_address }}
             </p>
             <Button variant="outline" size="sm" as-child>
-              <Link :href="complaintShow(job.complaint.id)">View complaint</Link>
+              <Link :href="complaintShow(job.complaint.id)"
+                >View complaint</Link
+              >
             </Button>
           </CardContent>
         </Card>
@@ -317,7 +338,9 @@ const submitCancel = (): void => {
 
                   <DialogFooter class="gap-2">
                     <DialogClose as-child>
-                      <Button type="button" variant="secondary">Keep job</Button>
+                      <Button type="button" variant="secondary"
+                        >Keep job</Button
+                      >
                     </DialogClose>
                     <Button
                       type="submit"

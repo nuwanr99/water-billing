@@ -60,6 +60,10 @@ class RolePermissionSeeder extends Seeder
             'system-ledger.view',
             'system-ledger.manage',
         ],
+        'expenses' => [
+            'expenses.view',
+            'expenses.create',
+        ],
         'payments' => [
             'payments.view-own',
             'payments.view-all',
@@ -128,6 +132,7 @@ class RolePermissionSeeder extends Seeder
             'bills.view', 'bills.generate', 'bills.print', 'bills.reissue',
             'ledger.view', 'ledger.record-charge',
             'system-ledger.view', 'system-ledger.manage',
+            'expenses.view', 'expenses.create',
             'payments.view-all', 'payments.record-manual', 'payments.reconcile',
             'complaints.view-all', 'complaints.manage', 'settings.manage',
             'maintenance-jobs.view-assigned', 'maintenance-jobs.view-all',

@@ -21,6 +21,7 @@ class RunningNumberService
         'receipt' => 'RCPT',
         'complaint' => 'CMP',
         'job' => 'JOB',
+        'expense' => 'EXP',
     ];
 
     /**

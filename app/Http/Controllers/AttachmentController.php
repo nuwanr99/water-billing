@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Attachment;
 use App\Models\ComplaintMessage;
+use App\Models\Expense;
 use App\Models\JobUpdate;
 use App\Services\ComplaintService;
 use App\Services\MaintenanceJobService;
@@ -33,6 +34,7 @@ class AttachmentController extends Controller
         $allowed = match (true) {
             $attachable instanceof ComplaintMessage => $this->complaints->canView($user, $attachable->complaint),
             $attachable instanceof JobUpdate => $this->jobs->canView($user, $attachable->job),
+            $attachable instanceof Expense => $user->can('expenses.view'),
             default => abort(404),
         };
 
