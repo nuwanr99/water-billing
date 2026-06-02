@@ -12,6 +12,7 @@ import {
   LayoutGrid,
   ListTree,
   MessageSquareWarning,
+  Package,
   Receipt,
   ReceiptText,
   Settings,
@@ -41,6 +42,7 @@ import { index as billingCategoriesIndex } from '@/routes/admin/billing-categori
 import { index as adminBillsIndex } from '@/routes/admin/bills';
 import { index as adminComplaintsIndex } from '@/routes/admin/complaints';
 import { index as adminExpensesIndex } from '@/routes/admin/expenses';
+import { index as adminInventoryIndex } from '@/routes/admin/inventory';
 import { index as ledgerAccountsIndex } from '@/routes/admin/ledger-accounts';
 import { index as adminMaintenanceJobsIndex } from '@/routes/admin/maintenance-jobs';
 import { index as adminPaymentsIndex } from '@/routes/admin/payments';
@@ -168,6 +170,14 @@ const adminNavItems = computed<NavItem[]>(() => {
       title: 'Expenses',
       href: adminExpensesIndex(),
       icon: HandCoins,
+    });
+  }
+
+  if (hasPermission('inventory.view')) {
+    items.push({
+      title: 'Inventory',
+      href: adminInventoryIndex(),
+      icon: Package,
     });
   }
 

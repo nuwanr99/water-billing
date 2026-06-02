@@ -6,11 +6,13 @@ use App\Http\Controllers\Admin\ChargeController;
 use App\Http\Controllers\Admin\ComplaintController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\ExpenseController;
+use App\Http\Controllers\Admin\InventoryItemController;
 use App\Http\Controllers\Admin\MaintenanceJobController;
 use App\Http\Controllers\Admin\PaymentController;
 use App\Http\Controllers\Admin\PermissionController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\SettingController;
+use App\Http\Controllers\Admin\StockMovementController;
 use App\Http\Controllers\Admin\SystemLedgerAccountController;
 use App\Http\Controllers\Admin\SystemLedgerEntryController;
 use App\Http\Controllers\Admin\UserController;
@@ -95,6 +97,19 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'verified', 'can:adm
         Route::get('/create', [ExpenseController::class, 'create'])->middleware('can:expenses.create')->name('create');
         Route::post('/', [ExpenseController::class, 'store'])->middleware('can:expenses.create')->name('store');
         Route::get('/{expense}', [ExpenseController::class, 'show'])->middleware('can:expenses.view')->name('show');
+    });
+
+    Route::prefix('inventory')->name('inventory.')->group(function () {
+        Route::get('/', [InventoryItemController::class, 'index'])->middleware('can:inventory.view')->name('index');
+        Route::get('/jobs', [StockMovementController::class, 'jobs'])->middleware('can:inventory.record-movement')->name('jobs');
+        Route::get('/create', [InventoryItemController::class, 'create'])->middleware('can:inventory.manage')->name('create');
+        Route::post('/', [InventoryItemController::class, 'store'])->middleware('can:inventory.manage')->name('store');
+        Route::get('/{inventoryItem}', [InventoryItemController::class, 'show'])->middleware('can:inventory.view')->name('show');
+        Route::get('/{inventoryItem}/edit', [InventoryItemController::class, 'edit'])->middleware('can:inventory.manage')->name('edit');
+        Route::put('/{inventoryItem}', [InventoryItemController::class, 'update'])->middleware('can:inventory.manage')->name('update');
+        Route::delete('/{inventoryItem}', [InventoryItemController::class, 'destroy'])->middleware('can:inventory.manage')->name('destroy');
+        Route::get('/{inventoryItem}/movements/create', [StockMovementController::class, 'create'])->middleware('can:inventory.record-movement')->name('movements.create');
+        Route::post('/{inventoryItem}/movements', [StockMovementController::class, 'store'])->middleware('can:inventory.record-movement')->name('movements.store');
     });
 
     Route::prefix('billing-categories')->name('billing-categories.')->group(function () {
