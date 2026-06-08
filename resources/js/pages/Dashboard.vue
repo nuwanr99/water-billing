@@ -1,16 +1,24 @@
 <script setup lang="ts">
-import { Head, Link, usePage } from '@inertiajs/vue3';
+import { Deferred, Head, Link, usePage } from '@inertiajs/vue3';
 import {
   CreditCard,
+  Download,
   Droplets,
   FileText,
   Gauge,
   MapPin,
   MessageSquareWarning,
   Plus,
+  ReceiptText,
+  TrendingDown,
+  TrendingUp,
+  TriangleAlert,
 } from '@lucide/vue';
 import { computed } from 'vue';
+import BillStatusBadge from '@/components/BillStatusBadge.vue';
 import ComplaintStatusBadge from '@/components/ComplaintStatusBadge.vue';
+import JobStatusBadge from '@/components/JobStatusBadge.vue';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -21,14 +29,18 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import WaterAccountStatusBadge from '@/components/WaterAccountStatusBadge.vue';
+import type { BillStatus } from '@/lib/bills';
 import type { ComplaintStatus } from '@/lib/complaints';
+import type { MaintenanceJobStatus } from '@/lib/jobs';
 import { formatReading } from '@/lib/utils';
 import { dashboard } from '@/routes';
+import { index as myBillsIndex } from '@/routes/my/bills';
 import {
   create as createComplaint,
   index as complaintsIndex,
   show as showComplaint,
 } from '@/routes/my/complaints';
+import { index as myPaymentsIndex } from '@/routes/my/payments';
 import { index as waterAccountsIndex } from '@/routes/water-accounts';
 import type { WaterAccountStatus } from '@/types';
 
@@ -43,22 +55,58 @@ type CurrentAccount = {
   pay_url: string;
 };
 
+type CurrentBill = {
+  id: number;
+  bill_number: string;
+  month_label: string;
+  total_due: number;
+  status: BillStatus;
+  due_date: string;
+  is_overdue: boolean;
+  days_until_due: number;
+  pdf_url: string | null;
+};
+
+type UsageEntry = {
+  month: string;
+  label: string;
+  consumption: number;
+};
+
+type RecentPayment = {
+  id: number;
+  receipt_number: string;
+  amount: number;
+  method: 'manual' | 'payhere';
+  paid_at: string;
+  receipt_url: string;
+};
+
 type RecentComplaint = {
   id: number;
   complaint_number: string;
   subject: string;
   status: ComplaintStatus;
+  job_status: MaintenanceJobStatus | null;
   submitted_at: string;
 };
 
-defineProps<{
+const props = defineProps<{
   currentAccount: CurrentAccount | null;
+  currentBill: CurrentBill | null;
   latestReading: {
     value: number;
     consumption: number;
+    previous_consumption: number | null;
     date: string;
   } | null;
+  usageHistory?: UsageEntry[];
+  recentPayments: RecentPayment[];
   activeAccountsCount: number;
+  can: {
+    view_bills: boolean;
+    view_payments: boolean;
+  };
   complaints: {
     can_submit: boolean;
     open_count: number;
@@ -80,32 +128,67 @@ defineOptions({
 const page = usePage();
 const firstName = computed(() => page.props.auth.user.first_name);
 
-/**
- * Placeholder values shown until the meter reading, billing, and payment
- * modules land. Widgets rendering these carry a "Sample" badge.
- */
-const sample = {
-  currentBill: 'Rs. 1,250.00',
-  billDueDate: 'Due 15 Jul 2026',
-  usageByMonth: [12, 15, 14, 18, 22, 19, 16, 20, 17, 15, 21, 18],
+const paymentMethodLabels: Record<RecentPayment['method'], string> = {
+  manual: 'Office receipt',
+  payhere: 'Online',
 };
 
-const months = [
-  'Aug',
-  'Sep',
-  'Oct',
-  'Nov',
-  'Dec',
-  'Jan',
-  'Feb',
-  'Mar',
-  'Apr',
-  'May',
-  'Jun',
-  'Jul',
-];
+const showDueSoonBanner = computed(
+  () =>
+    props.currentBill !== null &&
+    !props.currentBill.is_overdue &&
+    props.currentBill.status !== 'paid' &&
+    props.currentBill.days_until_due <= 7,
+);
 
-const maxUsage = Math.max(...sample.usageByMonth);
+/**
+ * Percent change of the latest consumption against the previous one.
+ * Null when there is no previous reading to compare against.
+ */
+const usageDelta = computed(() => {
+  if (
+    props.latestReading === null ||
+    props.latestReading.previous_consumption === null ||
+    props.latestReading.previous_consumption <= 0
+  ) {
+    return null;
+  }
+
+  const previous = props.latestReading.previous_consumption;
+  const percent =
+    ((props.latestReading.consumption - previous) / previous) * 100;
+
+  return {
+    percent: Math.abs(percent).toFixed(1),
+    increased: percent > 0,
+    unchanged: percent === 0,
+  };
+});
+
+const maxConsumption = computed(() =>
+  Math.max(...(props.usageHistory ?? []).map((entry) => entry.consumption), 1),
+);
+
+const usageInsights = computed(() => {
+  const history = props.usageHistory ?? [];
+
+  if (history.length < 2) {
+    return null;
+  }
+
+  const total = history.reduce((sum, entry) => sum + entry.consumption, 0);
+  const highest = history.reduce((peak, entry) =>
+    entry.consumption > peak.consumption ? entry : peak,
+  );
+
+  return {
+    average: formatReading(total / history.length),
+    highestLabel: highest.label,
+    highestValue: formatReading(highest.consumption),
+  };
+});
+
+const skeletonBarHeights = [45, 70, 55, 85, 60, 75, 50, 65, 80, 55, 90, 68];
 
 /**
  * Amounts render as "Rs 1,234.56" with two decimals; the sign is conveyed
@@ -162,19 +245,98 @@ const formatAmount = (value: number): string =>
     </div>
 
     <template v-else>
+      <Alert
+        v-if="currentBill && currentBill.is_overdue"
+        variant="destructive"
+        class="border-destructive/50"
+      >
+        <TriangleAlert />
+        <AlertTitle>
+          Bill {{ currentBill.bill_number }} for
+          {{ currentBill.month_label }} is overdue
+        </AlertTitle>
+        <AlertDescription
+          class="flex flex-wrap items-center justify-between gap-3"
+        >
+          <span>
+            Rs {{ formatAmount(currentBill.total_due) }} was due on
+            {{ currentBill.due_date }}. Please settle it to keep your connection
+            active.
+          </span>
+          <Button size="sm" variant="destructive" as-child>
+            <Link :href="currentAccount.pay_url">
+              <CreditCard class="size-4" />
+              Pay online
+            </Link>
+          </Button>
+        </AlertDescription>
+      </Alert>
+
+      <Alert
+        v-else-if="currentBill && showDueSoonBanner"
+        class="border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200"
+      >
+        <TriangleAlert />
+        <AlertTitle>
+          Bill {{ currentBill.bill_number }} for
+          {{ currentBill.month_label }} is
+          {{
+            currentBill.days_until_due === 0
+              ? 'due today'
+              : `due in ${currentBill.days_until_due} ${
+                  currentBill.days_until_due === 1 ? 'day' : 'days'
+                }`
+          }}
+        </AlertTitle>
+        <AlertDescription class="text-amber-800/90 dark:text-amber-200/80">
+          Rs {{ formatAmount(currentBill.total_due) }} is due by
+          {{ currentBill.due_date }}.
+        </AlertDescription>
+      </Alert>
+
       <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Card class="gap-2">
           <CardHeader>
             <CardDescription class="flex items-center justify-between gap-2">
               Current bill
-              <Badge variant="secondary">Sample</Badge>
+              <BillStatusBadge
+                v-if="currentBill"
+                :status="currentBill.status"
+              />
             </CardDescription>
             <CardTitle class="text-2xl">
-              {{ sample.currentBill }}
+              <template v-if="currentBill">
+                <a
+                  v-if="currentBill.pdf_url"
+                  :href="currentBill.pdf_url"
+                  target="_blank"
+                  rel="noopener"
+                  class="hover:underline"
+                >
+                  Rs {{ formatAmount(currentBill.total_due) }}
+                </a>
+                <template v-else>
+                  Rs {{ formatAmount(currentBill.total_due) }}
+                </template>
+              </template>
+              <template v-else>—</template>
             </CardTitle>
           </CardHeader>
-          <CardContent class="text-xs text-muted-foreground">
-            {{ sample.billDueDate }}
+          <CardContent class="space-y-1 text-xs text-muted-foreground">
+            <p>
+              {{
+                currentBill
+                  ? `${currentBill.month_label} · Due ${currentBill.due_date}`
+                  : 'No bills yet'
+              }}
+            </p>
+            <Link
+              v-if="can.view_bills"
+              :href="myBillsIndex()"
+              class="font-medium text-primary hover:underline"
+            >
+              View all bills
+            </Link>
           </CardContent>
         </Card>
 
@@ -208,9 +370,24 @@ const formatAmount = (value: number): string =>
             </CardTitle>
           </CardHeader>
           <CardContent class="text-xs text-muted-foreground">
-            {{
-              latestReading ? 'Since the previous reading' : 'No readings yet'
-            }}
+            <div
+              v-if="usageDelta && !usageDelta.unchanged"
+              class="flex items-center gap-1 font-medium"
+              :class="
+                usageDelta.increased
+                  ? 'text-red-600 dark:text-red-400'
+                  : 'text-emerald-600 dark:text-emerald-400'
+              "
+            >
+              <TrendingUp v-if="usageDelta.increased" class="size-3.5" />
+              <TrendingDown v-else class="size-3.5" />
+              {{ usageDelta.percent }}% vs previous reading
+            </div>
+            <template v-else>
+              {{
+                latestReading ? 'Since the previous reading' : 'No readings yet'
+              }}
+            </template>
           </CardContent>
         </Card>
 
@@ -230,39 +407,69 @@ const formatAmount = (value: number): string =>
       <div class="grid gap-4 lg:grid-cols-3">
         <Card class="lg:col-span-2">
           <CardHeader>
-            <div class="flex flex-wrap items-center justify-between gap-2">
-              <div>
-                <CardTitle class="text-base"> Monthly usage </CardTitle>
-                <CardDescription>
-                  Live data arrives with the meter reading module
-                </CardDescription>
-              </div>
-              <Badge variant="secondary">Sample</Badge>
-            </div>
+            <CardTitle class="text-base"> Monthly usage </CardTitle>
+            <CardDescription>
+              Water consumption recorded over the last 12 months
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <div class="flex h-40 items-end gap-2">
+            <Deferred data="usageHistory">
+              <template #fallback>
+                <div class="flex h-40 items-end gap-2">
+                  <div
+                    v-for="(height, barIndex) in skeletonBarHeights"
+                    :key="barIndex"
+                    class="flex-1 animate-pulse rounded-sm bg-muted"
+                    :style="{ height: `${height}%` }"
+                  />
+                </div>
+              </template>
+
+              <template v-if="usageHistory && usageHistory.length > 0">
+                <div class="flex h-40 items-end gap-2">
+                  <div
+                    v-for="(entry, entryIndex) in usageHistory"
+                    :key="entry.month"
+                    class="flex h-full flex-1 flex-col items-center justify-end gap-1.5"
+                    :title="`${formatReading(entry.consumption)} units`"
+                  >
+                    <div
+                      class="w-full rounded-sm"
+                      :class="
+                        entryIndex === usageHistory.length - 1
+                          ? 'bg-primary/70'
+                          : 'bg-primary/20'
+                      "
+                      :style="{
+                        height: `${(entry.consumption / maxConsumption) * 100}%`,
+                      }"
+                    />
+                    <span class="text-[10px] text-muted-foreground">
+                      {{ entry.label }}
+                    </span>
+                  </div>
+                </div>
+                <p
+                  v-if="usageInsights"
+                  class="mt-4 border-t pt-3 text-xs text-muted-foreground"
+                >
+                  Avg {{ usageInsights.average }} units / mo · Highest
+                  {{ usageInsights.highestLabel }} ({{
+                    usageInsights.highestValue
+                  }}
+                  units)
+                </p>
+              </template>
               <div
-                v-for="(usage, monthIndex) in sample.usageByMonth"
-                :key="monthIndex"
-                class="flex flex-1 flex-col items-center gap-1.5"
+                v-else
+                class="flex h-40 flex-col items-center justify-center gap-1 text-center"
               >
-                <div
-                  class="w-full rounded-sm bg-primary/20"
-                  :class="
-                    monthIndex === sample.usageByMonth.length - 1
-                      ? 'bg-primary/70'
-                      : ''
-                  "
-                  :style="{
-                    height: `${(usage / maxUsage) * 100}%`,
-                  }"
-                />
-                <span class="text-[10px] text-muted-foreground">
-                  {{ months[monthIndex] }}
-                </span>
+                <p class="text-sm font-medium">No usage recorded</p>
+                <p class="max-w-sm text-xs text-muted-foreground">
+                  Usage will appear after the first meter reading
+                </p>
               </div>
-            </div>
+            </Deferred>
           </CardContent>
         </Card>
 
@@ -342,78 +549,144 @@ const formatAmount = (value: number): string =>
       </div>
     </template>
 
-    <Card>
-      <CardHeader>
-        <div class="flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <CardTitle class="text-base">Your complaints</CardTitle>
-            <CardDescription>
-              Report a water supply issue and follow it to resolution
-            </CardDescription>
+    <div class="grid gap-4" :class="can.view_payments ? 'lg:grid-cols-2' : ''">
+      <Card>
+        <CardHeader>
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <CardTitle class="text-base">Your complaints</CardTitle>
+              <CardDescription>
+                Report a water supply issue and follow it to resolution
+              </CardDescription>
+            </div>
+            <div class="flex items-center gap-2">
+              <Badge v-if="complaints.open_count > 0" variant="secondary">
+                {{ complaints.open_count }} open
+              </Badge>
+              <Button
+                v-if="complaints.can_submit"
+                size="sm"
+                variant="outline"
+                as-child
+              >
+                <Link :href="createComplaint()">
+                  <Plus class="size-4" />
+                  Report an issue
+                </Link>
+              </Button>
+            </div>
           </div>
-          <div class="flex items-center gap-2">
-            <Badge v-if="complaints.open_count > 0" variant="secondary">
-              {{ complaints.open_count }} open
-            </Badge>
-            <Button
-              v-if="complaints.can_submit"
-              size="sm"
-              variant="outline"
-              as-child
+        </CardHeader>
+        <CardContent>
+          <ul v-if="complaints.recent.length > 0" class="divide-y">
+            <li
+              v-for="complaint in complaints.recent"
+              :key="complaint.id"
+              class="py-3 first:pt-0 last:pb-0"
             >
-              <Link :href="createComplaint()">
-                <Plus class="size-4" />
-                Report an issue
+              <Link
+                :href="showComplaint(complaint.id)"
+                class="flex items-center gap-3"
+              >
+                <div
+                  class="flex size-9 shrink-0 items-center justify-center rounded-full bg-muted"
+                >
+                  <MessageSquareWarning class="size-4 text-muted-foreground" />
+                </div>
+                <div class="min-w-0 flex-1">
+                  <p class="truncate text-sm font-medium">
+                    {{ complaint.subject }}
+                  </p>
+                  <p class="truncate text-xs text-muted-foreground">
+                    {{ complaint.complaint_number }} ·
+                    {{ complaint.submitted_at }}
+                  </p>
+                </div>
+                <ComplaintStatusBadge :status="complaint.status" />
+                <JobStatusBadge
+                  v-if="complaint.job_status"
+                  :status="complaint.job_status"
+                />
               </Link>
-            </Button>
+            </li>
+          </ul>
+          <div v-else class="flex flex-col items-center gap-1 py-6 text-center">
+            <p class="text-sm font-medium">No complaints yet</p>
+            <p class="max-w-sm text-xs text-muted-foreground">
+              If something is wrong with your water supply, let the society
+              office know and track the fix here.
+            </p>
           </div>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <ul v-if="complaints.recent.length > 0" class="divide-y">
-          <li
-            v-for="complaint in complaints.recent"
-            :key="complaint.id"
-            class="py-3 first:pt-0 last:pb-0"
+        </CardContent>
+        <CardContent v-if="complaints.recent.length > 0" class="border-t pt-4">
+          <Link
+            :href="complaintsIndex()"
+            class="text-sm font-medium text-primary hover:underline"
           >
-            <Link
-              :href="showComplaint(complaint.id)"
-              class="flex items-center gap-3"
+            View all complaints
+          </Link>
+        </CardContent>
+      </Card>
+
+      <Card v-if="can.view_payments">
+        <CardHeader>
+          <CardTitle class="text-base">Recent payments</CardTitle>
+          <CardDescription>
+            Your latest receipts across all accounts
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ul v-if="recentPayments.length > 0" class="divide-y">
+            <li
+              v-for="payment in recentPayments"
+              :key="payment.id"
+              class="flex items-center gap-3 py-3 first:pt-0 last:pb-0"
             >
               <div
                 class="flex size-9 shrink-0 items-center justify-center rounded-full bg-muted"
               >
-                <MessageSquareWarning class="size-4 text-muted-foreground" />
+                <ReceiptText class="size-4 text-muted-foreground" />
               </div>
               <div class="min-w-0 flex-1">
                 <p class="truncate text-sm font-medium">
-                  {{ complaint.subject }}
+                  {{ payment.receipt_number }}
                 </p>
                 <p class="truncate text-xs text-muted-foreground">
-                  {{ complaint.complaint_number }} ·
-                  {{ complaint.submitted_at }}
+                  {{ payment.paid_at }} ·
+                  {{ paymentMethodLabels[payment.method] }}
                 </p>
               </div>
-              <ComplaintStatusBadge :status="complaint.status" />
-            </Link>
-          </li>
-        </ul>
-        <div v-else class="flex flex-col items-center gap-1 py-6 text-center">
-          <p class="text-sm font-medium">No complaints yet</p>
-          <p class="max-w-sm text-xs text-muted-foreground">
-            If something is wrong with your water supply, let the society office
-            know and track the fix here.
-          </p>
-        </div>
-      </CardContent>
-      <CardContent v-if="complaints.recent.length > 0" class="border-t pt-4">
-        <Link
-          :href="complaintsIndex()"
-          class="text-sm font-medium text-primary hover:underline"
-        >
-          View all complaints
-        </Link>
-      </CardContent>
-    </Card>
+              <span class="text-sm font-medium tabular-nums">
+                Rs {{ formatAmount(payment.amount) }}
+              </span>
+              <a
+                :href="payment.receipt_url"
+                target="_blank"
+                rel="noopener"
+                class="text-muted-foreground transition-colors hover:text-foreground"
+                :aria-label="`Download receipt ${payment.receipt_number}`"
+              >
+                <Download class="size-4" />
+              </a>
+            </li>
+          </ul>
+          <div v-else class="flex flex-col items-center gap-1 py-6 text-center">
+            <p class="text-sm font-medium">No payments yet</p>
+            <p class="max-w-sm text-xs text-muted-foreground">
+              Receipts will appear here once a bill is paid at the office or
+              online.
+            </p>
+          </div>
+        </CardContent>
+        <CardContent v-if="recentPayments.length > 0" class="border-t pt-4">
+          <Link
+            :href="myPaymentsIndex()"
+            class="text-sm font-medium text-primary hover:underline"
+          >
+            View all payments
+          </Link>
+        </CardContent>
+      </Card>
+    </div>
   </div>
 </template>

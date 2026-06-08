@@ -6,12 +6,14 @@ use App\Models\Bill;
 use App\Models\MeterReading;
 use App\Models\WaterAccount;
 use App\Services\BillGenerationService;
+use App\Services\BillPdfService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 /**
  * The on-site billing flow (D-14): the Water Controller reviews the bill
@@ -100,6 +102,18 @@ class BillController extends Controller
                 'account' => $bill->waterAccount->account_number,
                 'meter' => $bill->waterAccount->meter_number,
             ]),
+        ]);
+    }
+
+    /**
+     * Download the bill as a PDF — the same ticket the member receives
+     * over WhatsApp.
+     */
+    public function pdf(Bill $bill, BillPdfService $billPdf): SymfonyResponse
+    {
+        return response($billPdf->render($bill), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => "attachment; filename=\"{$bill->bill_number}.pdf\"",
         ]);
     }
 

@@ -131,7 +131,9 @@ const { search, sort, direction, sortBy } = useDatatable(
               {{ billingCategory.water_accounts_count }}
             </TableCell>
             <TableCell>
-              <Badge :variant="billingCategory.is_active ? 'default' : 'secondary'">
+              <Badge
+                :variant="billingCategory.is_active ? 'default' : 'secondary'"
+              >
                 {{ billingCategory.is_active ? 'Active' : 'Inactive' }}
               </Badge>
             </TableCell>

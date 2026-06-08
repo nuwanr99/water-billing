@@ -6,8 +6,10 @@ use App\Http\Controllers\BillController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\MemberPaymentController;
 use App\Http\Controllers\MeterReadingController;
+use App\Http\Controllers\My\BillController as MyBillController;
 use App\Http\Controllers\My\ComplaintController as MyComplaintController;
 use App\Http\Controllers\My\JobController as MyJobController;
+use App\Http\Controllers\My\PaymentController as MyPaymentController;
 use App\Http\Controllers\PublicPaymentController;
 use App\Http\Controllers\WaterAccountController;
 use Illuminate\Support\Facades\Route;
@@ -45,12 +47,22 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::prefix('bills')->name('bills.')->group(function () {
         Route::get('preview/{meterReading}', [BillController::class, 'preview'])->name('preview')->middleware('can:bills.generate');
         Route::post('preview/{meterReading}', [BillController::class, 'store'])->name('store')->middleware('can:bills.generate');
-        Route::get('{bill}', [BillController::class, 'show'])->name('show')->middleware('can:bills.view');
+        Route::get('{bill}', [BillController::class, 'show'])->name('show')->middleware('can:view,bill');
+        Route::get('{bill}/pdf', [BillController::class, 'pdf'])->name('pdf')->middleware('can:view,bill');
     });
 
     Route::prefix('my/pay')->name('my.pay.')->group(function () {
         Route::get('{waterAccount}', [MemberPaymentController::class, 'show'])->name('show');
         Route::post('{waterAccount}', [MemberPaymentController::class, 'checkout'])->name('checkout');
+    });
+
+    Route::prefix('my/bills')->name('my.bills.')->group(function () {
+        Route::get('', [MyBillController::class, 'index'])->middleware('can:bills.view-own')->name('index');
+    });
+
+    Route::prefix('my/payments')->name('my.payments.')->group(function () {
+        Route::get('', [MyPaymentController::class, 'index'])->middleware('can:payments.view-own')->name('index');
+        Route::get('{payment}/receipt', [MyPaymentController::class, 'receipt'])->middleware('can:payments.view-own')->name('receipt');
     });
 
     Route::prefix('my/complaints')->name('my.complaints.')->group(function () {

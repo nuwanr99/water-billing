@@ -83,7 +83,9 @@ form.transform((data) => ({
 const lowerBoundOf = (tiers: TierRow[], index: number): number => {
   const previousUpper = tiers[index - 1]?.upper_units;
 
-  return previousUpper === null || previousUpper === '' || previousUpper === undefined
+  return previousUpper === null ||
+    previousUpper === '' ||
+    previousUpper === undefined
     ? 0
     : Number(previousUpper);
 };
@@ -102,7 +104,11 @@ const fromLabel = (index: number): string => {
 
   const previousUpper = form.tiers[index - 1]?.upper_units;
 
-  if (previousUpper === null || previousUpper === '' || previousUpper === undefined) {
+  if (
+    previousUpper === null ||
+    previousUpper === '' ||
+    previousUpper === undefined
+  ) {
     return '—';
   }
 
@@ -191,8 +197,8 @@ const submit = () => {
         <p class="mt-1 text-xs text-muted-foreground">
           Usage is charged progressively across slabs. The monthly service
           charge applied is the one on the slab the month's total consumption
-          falls in; a month with no usage pays the first slab's service
-          charge. The last slab is open-ended.
+          falls in; a month with no usage pays the first slab's service charge.
+          The last slab is open-ended.
         </p>
       </div>
 
@@ -215,7 +221,7 @@ const submit = () => {
               :key="tierIndex"
               class="border-b last:border-0"
             >
-              <td class="p-3 tabular-nums text-muted-foreground">
+              <td class="p-3 text-muted-foreground tabular-nums">
                 {{ fromLabel(tierIndex) }}
               </td>
               <td class="p-3">

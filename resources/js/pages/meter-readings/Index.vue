@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head, Link, router, setLayoutProps } from '@inertiajs/vue3';
+import { Head, Link, router } from '@inertiajs/vue3';
 import {
   ChevronRight,
   CircleCheck,
@@ -11,6 +11,7 @@ import {
 import { watchDebounced } from '@vueuse/core';
 import { computed, ref } from 'vue';
 import SearchFilter from '@/components/admin/SearchFilter.vue';
+import Heading from '@/components/Heading.vue';
 import { formatReading } from '@/lib/utils';
 import { preview, show } from '@/routes/bills';
 import { create, history, index } from '@/routes/meter-readings';
@@ -28,7 +29,9 @@ const props = defineProps<{
   filters: { search: string | null };
 }>();
 
-setLayoutProps({ title: 'Meter readings' });
+defineOptions({
+  layout: { breadcrumbs: [{ title: 'Meter readings', href: index() }] },
+});
 
 const search = ref(props.filters.search ?? '');
 
@@ -53,7 +56,11 @@ const progressPercent = computed(() =>
 <template>
   <Head title="Meter readings" />
 
-  <div class="flex flex-1 flex-col gap-4 px-4 pt-3 pb-6">
+  <div
+    class="mx-auto flex w-full max-w-md flex-1 flex-col gap-4 px-4 pt-3 pb-6"
+  >
+    <Heading variant="small" title="Meter readings" />
+
     <div class="flex flex-col gap-2">
       <div
         class="flex items-baseline justify-between gap-2 text-sm text-muted-foreground"

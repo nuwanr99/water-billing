@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { Head, Link, setLayoutProps } from '@inertiajs/vue3';
+import { Head, Link } from '@inertiajs/vue3';
 import { Pencil } from '@lucide/vue';
+import Heading from '@/components/Heading.vue';
 import AccountSummaryCard from '@/components/meter-readings/AccountSummaryCard.vue';
 import { Button } from '@/components/ui/button';
 import { formatReading } from '@/lib/utils';
@@ -16,16 +17,19 @@ defineProps<{
   initialReading: number;
 }>();
 
-setLayoutProps({
-  title: 'Reading history',
-  backHref: index().url,
+defineOptions({
+  layout: { breadcrumbs: [{ title: 'Meter readings', href: index() }] },
 });
 </script>
 
 <template>
   <Head :title="`History — ${account.account_number}`" />
 
-  <div class="flex flex-1 flex-col gap-4 px-4 pt-3 pb-6">
+  <div
+    class="mx-auto flex w-full max-w-md flex-1 flex-col gap-4 px-4 pt-3 pb-6"
+  >
+    <Heading variant="small" title="Reading history" />
+
     <AccountSummaryCard :account="account" />
 
     <div class="rounded-2xl border">

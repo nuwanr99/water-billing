@@ -48,6 +48,7 @@ class RolePermissionSeeder extends Seeder
         ],
         'bills' => [
             'bills.view',
+            'bills.view-own',
             'bills.generate',
             'bills.print',
             'bills.reissue',
@@ -120,6 +121,7 @@ class RolePermissionSeeder extends Seeder
 
         $memberRole = Role::firstOrCreate(['name' => 'Member', 'guard_name' => 'web']);
         $memberRole->syncPermissions([
+            'bills.view-own', 'payments.view-own',
             'complaints.submit', 'complaints.view-own',
             'maintenance-jobs.view-assigned', 'maintenance-jobs.update-status',
         ]);

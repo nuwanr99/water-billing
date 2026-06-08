@@ -118,9 +118,8 @@ const consumption = computed(() =>
         <template v-if="consumption === null">
           <Droplets class="size-5 shrink-0 text-muted-foreground" />
           <p class="text-sm text-muted-foreground">
-            Type every digit on the dial, including the two red decimals —
-            the decimal point is entered for you. Usage is calculated
-            automatically.
+            Type every digit on the dial, including the two red decimals — the
+            decimal point is entered for you. Usage is calculated automatically.
           </p>
         </template>
         <template v-else-if="consumption < 0">

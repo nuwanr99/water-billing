@@ -53,7 +53,9 @@ import { index as systemLedgerIndex } from '@/routes/admin/system-ledger';
 import { index as usersIndex } from '@/routes/admin/users';
 import { index as adminWaterAccountsIndex } from '@/routes/admin/water-accounts';
 import { index as meterReadingsIndex } from '@/routes/meter-readings';
+import { index as myBillsIndex } from '@/routes/my/bills';
 import { index as myComplaintsIndex } from '@/routes/my/complaints';
+import { index as myPaymentsIndex } from '@/routes/my/payments';
 import { index as myJobsIndex } from '@/routes/my-jobs';
 import { index as waterAccountsIndex } from '@/routes/water-accounts';
 import type { NavItem } from '@/types';
@@ -80,6 +82,22 @@ const mainNavItems = computed<NavItem[]>(() => {
       icon: Droplets,
     },
   ];
+
+  if (hasPermission('bills.view-own')) {
+    items.push({
+      title: 'My bills',
+      href: myBillsIndex(),
+      icon: Receipt,
+    });
+  }
+
+  if (hasPermission('payments.view-own')) {
+    items.push({
+      title: 'My payments',
+      href: myPaymentsIndex(),
+      icon: Banknote,
+    });
+  }
 
   if (hasPermission('readings.view')) {
     items.push({

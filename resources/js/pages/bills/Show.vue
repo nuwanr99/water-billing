@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { Head, Link, setLayoutProps } from '@inertiajs/vue3';
-import { ArrowLeft, Printer } from '@lucide/vue';
+import { ArrowLeft, Download, Printer } from '@lucide/vue';
 import QRCode from 'qrcode';
 import { computed, onMounted, ref } from 'vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import MeterReaderLayout from '@/layouts/MeterReaderLayout.vue';
+import { pdf } from '@/routes/bills';
 import { index as meterReadingsIndex } from '@/routes/meter-readings';
 
 defineOptions({ layout: MeterReaderLayout });
@@ -192,10 +193,18 @@ const printBill = (): void => {
           </span>
         </div>
 
-        <Button size="lg" class="w-full" @click="printBill">
-          <Printer class="size-4" />
-          Print bill
-        </Button>
+        <div class="flex gap-2">
+          <Button size="lg" class="flex-1" @click="printBill">
+            <Printer class="size-4" />
+            Print bill
+          </Button>
+          <Button variant="outline" size="lg" class="flex-1" as-child>
+            <a :href="pdf(bill.id).url">
+              <Download class="size-4" />
+              Download PDF
+            </a>
+          </Button>
+        </div>
         <Button variant="outline" class="w-full" as-child>
           <Link :href="meterReadingsIndex().url">
             <ArrowLeft class="size-4" />

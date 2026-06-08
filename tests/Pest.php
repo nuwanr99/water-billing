@@ -56,6 +56,24 @@ function something()
 }
 
 /**
+ * An active water account owned by the given user, on a flat 20.00/unit
+ * tariff — ready to be billed via billedAccount(units, $account).
+ */
+function memberAccount(User $owner): WaterAccount
+{
+    $category = BillingCategory::factory()->create();
+    $category->tiers()->createMany([
+        ['lower_units' => 0, 'upper_units' => null, 'rate_per_unit' => 20.00, 'service_charge' => 0],
+    ]);
+
+    return WaterAccount::factory()->create([
+        'user_id' => $owner->id,
+        'billing_category_id' => $category->id,
+        'initial_reading' => 1000,
+    ]);
+}
+
+/**
  * An account on a flat 20.00/unit tariff with a current-month reading of
  * the given consumption, billed — total due = 20 x units.
  *
