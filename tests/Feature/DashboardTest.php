@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\MaintenanceJob;
 use App\Models\SystemLedgerAccount;
 use App\Models\User;
 use App\Services\PaymentService;
@@ -31,20 +32,103 @@ test('admins can also visit the normal dashboard', function () {
         ->assertInertia(fn ($page) => $page->component('Dashboard'));
 });
 
-test('the admin dashboard shows stats and recent users', function () {
+test('the admin dashboard shows operational widgets built from live billing data', function () {
+    $this->seed(RolePermissionSeeder::class);
+    $this->seed(SystemLedgerAccountSeeder::class);
+
+    $admin = User::factory()->create();
+    $admin->assignRole('Super Admin');
+
+    ['account' => $account] = billedAccount(10); // 200.00 billed
+
+    $cash = SystemLedgerAccount::query()->where('code', '1000')->firstOrFail();
+    app(PaymentService::class)->record($account, 50.00, $cash, $admin);
+
+    $this->actingAs($admin)
+        ->get(route('admin.dashboard'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('admin/Dashboard')
+            ->where('billing.month_total', 200)
+            ->where('billing.month_count', 1)
+            ->where('billing.unpaid_count', 1)
+            ->where('billing.overdue_count', 0)
+            ->where('collections.month_total', 50)
+            ->count('collections.recent', 1)
+            ->where('collections.recent.0.amount', 50)
+            ->where('outstanding.total_due', 150)
+            ->where('outstanding.accounts_in_arrears', 1)
+            ->where('accounts.active', 1)
+            ->where('readings.recorded', 1)
+            ->where('readings.active_accounts', 1)
+        );
+});
+
+test('every admin dashboard widget is hidden without its view permission', function () {
     $this->seed(RolePermissionSeeder::class);
 
     $user = User::factory()->create();
-    $user->assignRole('Super Admin');
+    $user->givePermissionTo('admin');
 
     $this->actingAs($user)
         ->get(route('admin.dashboard'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('admin/Dashboard')
-            ->where('stats.users', 2)
-            ->where('stats.roles', 8)
-            ->has('recentUsers')
+            ->where('billing', null)
+            ->where('collections', null)
+            ->where('outstanding', null)
+            ->where('accounts', null)
+            ->where('readings', null)
+            ->where('complaints', null)
+            ->where('maintenanceJobs', null)
+            ->where('myJobs', null)
+            ->where('expenses', null)
+            ->where('inventory', null)
+        );
+});
+
+test('jobs assigned to the current user appear on the admin dashboard', function () {
+    $this->seed(RolePermissionSeeder::class);
+
+    $staff = User::factory()->create();
+    $staff->givePermissionTo('admin', 'maintenance-jobs.view-assigned');
+
+    $ownJob = MaintenanceJob::factory()->create();
+    $ownJob->assignees()->attach($staff->id, ['assigned_by' => $ownJob->created_by, 'assigned_at' => now()]);
+
+    // A completed job and someone else's job must not show up.
+    $completed = MaintenanceJob::factory()->completed()->create();
+    $completed->assignees()->attach($staff->id, ['assigned_by' => $completed->created_by, 'assigned_at' => now()]);
+    MaintenanceJob::factory()->create();
+
+    $this->actingAs($staff)
+        ->get(route('admin.dashboard'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('admin/Dashboard')
+            ->where('myJobs.open_count', 1)
+            ->count('myJobs.open', 1)
+            ->where('myJobs.open.0.job_number', $ownJob->job_number)
+            ->where('maintenanceJobs', null)
+        );
+});
+
+test('each admin dashboard widget only requires its own permission', function () {
+    $this->seed(RolePermissionSeeder::class);
+
+    $user = User::factory()->create();
+    $user->givePermissionTo('admin', 'payments.view-all', 'complaints.view-all');
+
+    $this->actingAs($user)
+        ->get(route('admin.dashboard'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('admin/Dashboard')
+            ->has('collections')
+            ->has('complaints')
+            ->where('billing', null)
+            ->where('inventory', null)
         );
 });
 

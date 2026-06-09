@@ -183,6 +183,14 @@ const adminNavItems = computed<NavItem[]>(() => {
     });
   }
 
+  if (hasPermission('maintenance-jobs.view-assigned')) {
+    items.push({
+      title: 'My jobs',
+      href: myJobsIndex(),
+      icon: ClipboardList,
+    });
+  }
+
   if (hasPermission('expenses.view')) {
     items.push({
       title: 'Expenses',
