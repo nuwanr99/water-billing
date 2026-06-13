@@ -5,14 +5,13 @@ import AuthLayout from '@/layouts/AuthLayout.vue';
 import SettingsLayout from '@/layouts/settings/Layout.vue';
 import { initializeFlashToast } from '@/lib/flashToast';
 
-const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
+const appName =
+  import.meta.env.VITE_APP_NAME || 'Medamahanuwara Water Society';
 
 createInertiaApp({
   title: (title) => (title ? `${title} - ${appName}` : appName),
   layout: (name) => {
     switch (true) {
-      case name === 'Welcome':
-        return null;
       // Bare print sheets: opened in a new tab, auto-print, no chrome —
       // any layout wrapper distorts the 78mm thermal geometry.
       case name.startsWith('print/'):

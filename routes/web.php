@@ -14,7 +14,7 @@ use App\Http\Controllers\PublicPaymentController;
 use App\Http\Controllers\WaterAccountController;
 use Illuminate\Support\Facades\Route;
 
-Route::inertia('/', 'Welcome')->name('home');
+Route::get('/', fn () => redirect()->route('login'))->name('home');
 
 Route::middleware(['guest', 'throttle:otp'])->prefix('login/otp')->name('login.otp.')->group(function () {
     Route::post('request', [OtpLoginController::class, 'request'])->name('request');

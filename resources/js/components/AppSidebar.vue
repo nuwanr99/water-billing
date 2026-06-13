@@ -13,6 +13,7 @@ import {
   ListTree,
   MessageSquareWarning,
   Package,
+  FileChartColumn,
   Receipt,
   ReceiptText,
   Settings,
@@ -47,6 +48,14 @@ import { index as ledgerAccountsIndex } from '@/routes/admin/ledger-accounts';
 import { index as adminMaintenanceJobsIndex } from '@/routes/admin/maintenance-jobs';
 import { index as adminPaymentsIndex } from '@/routes/admin/payments';
 import { index as permissionsIndex } from '@/routes/admin/permissions';
+import { index as arrearsReport } from '@/routes/admin/reports/arrears';
+import { index as billingReport } from '@/routes/admin/reports/billing';
+import { index as collectionsReport } from '@/routes/admin/reports/collections';
+import { index as consumptionReport } from '@/routes/admin/reports/consumption';
+import { index as expensesReport } from '@/routes/admin/reports/expenses';
+import { index as financialPositionReport } from '@/routes/admin/reports/financial-position';
+import { index as inventoryReport } from '@/routes/admin/reports/inventory';
+import { index as jobsReport } from '@/routes/admin/reports/jobs';
 import { index as rolesIndex } from '@/routes/admin/roles';
 import { edit as notificationSettings } from '@/routes/admin/settings/notifications';
 import { index as systemLedgerIndex } from '@/routes/admin/system-ledger';
@@ -217,6 +226,24 @@ const adminNavItems = computed<NavItem[]>(() => {
       title: 'Ledger accounts',
       href: ledgerAccountsIndex(),
       icon: ListTree,
+    });
+  }
+
+  if (hasPermission('reports.view')) {
+    items.push({
+      title: 'Reports',
+      href: billingReport(),
+      icon: FileChartColumn,
+      children: [
+        { title: 'Billing summary', href: billingReport() },
+        { title: 'Collections', href: collectionsReport() },
+        { title: 'Arrears', href: arrearsReport() },
+        { title: 'Consumption', href: consumptionReport() },
+        { title: 'Expenses', href: expensesReport() },
+        { title: 'Financial position', href: financialPositionReport() },
+        { title: 'Inventory', href: inventoryReport() },
+        { title: 'Complaints & jobs', href: jobsReport() },
+      ],
     });
   }
 

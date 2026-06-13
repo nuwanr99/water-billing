@@ -89,6 +89,10 @@ class RolePermissionSeeder extends Seeder
             'maintenance-jobs.assign',
             'maintenance-jobs.update-status',
         ],
+        'reports' => [
+            'reports.view',
+            'reports.export',
+        ],
         'settings' => [
             'settings.manage',
         ],
@@ -145,15 +149,18 @@ class RolePermissionSeeder extends Seeder
             'complaints.view-all', 'complaints.manage', 'settings.manage',
             'maintenance-jobs.view-assigned', 'maintenance-jobs.view-all',
             'maintenance-jobs.create', 'maintenance-jobs.assign', 'maintenance-jobs.update-status',
+            'reports.view', 'reports.export',
         ]);
 
-        // The society office roles that triage complaints and dispatch work (D-46).
+        // The society office roles that triage complaints and dispatch work
+        // (D-46). The President additionally receives the management reports.
         foreach (['Secretary', 'President'] as $officeRole) {
             Role::firstOrCreate(['name' => $officeRole, 'guard_name' => 'web'])->syncPermissions([
                 'admin',
                 'complaints.view-all', 'complaints.manage', 'settings.manage',
                 'maintenance-jobs.view-assigned', 'maintenance-jobs.view-all',
                 'maintenance-jobs.create', 'maintenance-jobs.assign', 'maintenance-jobs.update-status',
+                ...($officeRole === 'President' ? ['reports.view', 'reports.export'] : []),
             ]);
         }
 

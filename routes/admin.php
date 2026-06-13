@@ -10,6 +10,14 @@ use App\Http\Controllers\Admin\InventoryItemController;
 use App\Http\Controllers\Admin\MaintenanceJobController;
 use App\Http\Controllers\Admin\PaymentController;
 use App\Http\Controllers\Admin\PermissionController;
+use App\Http\Controllers\Admin\Reports\ArrearsReportController;
+use App\Http\Controllers\Admin\Reports\BillingSummaryReportController;
+use App\Http\Controllers\Admin\Reports\CollectionReportController;
+use App\Http\Controllers\Admin\Reports\ConsumptionReportController;
+use App\Http\Controllers\Admin\Reports\ExpenseSummaryReportController;
+use App\Http\Controllers\Admin\Reports\FinancialPositionReportController;
+use App\Http\Controllers\Admin\Reports\InventoryReportController;
+use App\Http\Controllers\Admin\Reports\JobCompletionReportController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\SettingController;
 use App\Http\Controllers\Admin\StockMovementController;
@@ -142,6 +150,29 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'verified', 'can:adm
         Route::put('/{maintenanceJob}', [MaintenanceJobController::class, 'update'])->middleware('can:maintenance-jobs.assign')->name('update');
         Route::post('/{maintenanceJob}/updates', [MaintenanceJobController::class, 'postUpdate'])->name('updates');
         Route::post('/{maintenanceJob}/status', [MaintenanceJobController::class, 'status'])->middleware('can:maintenance-jobs.update-status')->name('status');
+    });
+
+    Route::prefix('reports')->name('reports.')->middleware('can:reports.view')->group(function () {
+        $reports = [
+            'billing' => BillingSummaryReportController::class,
+            'collections' => CollectionReportController::class,
+            'arrears' => ArrearsReportController::class,
+            'consumption' => ConsumptionReportController::class,
+            'expenses' => ExpenseSummaryReportController::class,
+            'financial-position' => FinancialPositionReportController::class,
+            'inventory' => InventoryReportController::class,
+            'jobs' => JobCompletionReportController::class,
+        ];
+
+        foreach ($reports as $slug => $controller) {
+            Route::prefix($slug)->name("{$slug}.")->group(function () use ($controller) {
+                Route::get('/', [$controller, 'index'])->name('index');
+                Route::get('/pdf', [$controller, 'pdf'])->middleware('can:reports.export')->name('pdf');
+                Route::get('/csv', [$controller, 'csv'])->middleware('can:reports.export')->name('csv');
+            });
+        }
+
+        Route::get('/billing/accounts', [BillingSummaryReportController::class, 'accounts'])->name('billing.accounts');
     });
 
     Route::prefix('settings')->name('settings.')->group(function () {
