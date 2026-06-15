@@ -28,3 +28,5 @@ yarn-error.log
 /.vscode
 /.zed
 docs/*
+.image-gen.json
+.gstack/
