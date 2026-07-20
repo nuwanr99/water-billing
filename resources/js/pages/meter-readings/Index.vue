@@ -10,6 +10,7 @@ import {
 } from '@lucide/vue';
 import { watchDebounced } from '@vueuse/core';
 import { computed, ref } from 'vue';
+import QrScanButton from '@/components/admin/QrScanButton.vue';
 import SearchFilter from '@/components/admin/SearchFilter.vue';
 import Heading from '@/components/Heading.vue';
 import { formatReading } from '@/lib/utils';
@@ -46,6 +47,7 @@ watchDebounced(
   { debounce: 300 },
 );
 
+
 const progressPercent = computed(() =>
   props.progress.total === 0
     ? 0
@@ -81,11 +83,14 @@ const progressPercent = computed(() =>
       </div>
     </div>
 
-    <SearchFilter
-      v-model="search"
-      class="max-w-none"
-      placeholder="Name, account, or meter number..."
-    />
+    <div class="flex items-center gap-2">
+      <SearchFilter
+        v-model="search"
+        class="max-w-none flex-1"
+        placeholder="Name, account, or meter number..."
+      />
+      <QrScanButton context="meter-reading" :search="search" />
+    </div>
 
     <div
       v-if="accounts.length === 0"

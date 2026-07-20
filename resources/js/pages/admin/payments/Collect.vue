@@ -3,6 +3,7 @@ import { Head, Link, router } from '@inertiajs/vue3';
 import { ChevronRight, FileText, Gauge, SearchX } from '@lucide/vue';
 import { watchDebounced } from '@vueuse/core';
 import { ref } from 'vue';
+import QrScanButton from '@/components/admin/QrScanButton.vue';
 import SearchFilter from '@/components/admin/SearchFilter.vue';
 import Heading from '@/components/Heading.vue';
 import { collect, index } from '@/routes/admin/payments';
@@ -49,6 +50,7 @@ watchDebounced(
   { debounce: 300 },
 );
 
+
 /**
  * Amounts render as "Rs 1,234.56" with two decimals; the sign is conveyed
  * by the surrounding Due / CR (credit) styling rather than a minus sign.
@@ -70,10 +72,13 @@ const formatAmount = (value: number): string =>
       description="Find an account to review its balance and record a payment"
     />
 
-    <SearchFilter
-      v-model="search"
-      placeholder="Name, account, or meter number..."
-    />
+    <div class="flex items-center gap-2">
+      <SearchFilter
+        v-model="search"
+        placeholder="Name, account, or meter number..."
+      />
+      <QrScanButton context="payment" :search="search" />
+    </div>
 
     <div
       v-if="accounts.length === 0"

@@ -43,9 +43,9 @@ class MeterReadingController extends Controller
             })
             ->orderBy('account_number')
             ->get()
-            ->map(function (WaterAccount $waterAccount) use ($currentMonth): array {
+            ->map(function (WaterAccount $waterAccount): array {
                 $latest = $waterAccount->latestReading;
-                $readThisMonth = $latest?->billing_month === $currentMonth;
+                $readThisMonth = $waterAccount->hasReadingForCurrentMonth();
                 $currentBill = $readThisMonth ? $latest->bills->firstWhere('is_current', true) : null;
 
                 return [
@@ -81,7 +81,7 @@ class MeterReadingController extends Controller
     {
         $latest = $waterAccount->latestReading;
 
-        if ($latest?->billing_month === now()->format('Y-m')) {
+        if ($waterAccount->hasReadingForCurrentMonth()) {
             Inertia::flash('toast', ['type' => 'info', 'message' => __('This month\'s reading is already recorded.')]);
 
             return to_route('meter-readings.history', $waterAccount);

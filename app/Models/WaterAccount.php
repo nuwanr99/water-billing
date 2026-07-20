@@ -156,4 +156,14 @@ class WaterAccount extends Model
     {
         return (float) ($this->latestReading->reading_value ?? $this->initial_reading);
     }
+
+    /**
+     * Whether a reading is already recorded for the current billing month:
+     * the single definition behind read_this_month on the reading screens
+     * and the QR scan resolver.
+     */
+    public function hasReadingForCurrentMonth(): bool
+    {
+        return $this->latestReading?->billing_month === now()->format('Y-m');
+    }
 }

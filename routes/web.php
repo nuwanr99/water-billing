@@ -11,6 +11,7 @@ use App\Http\Controllers\My\ComplaintController as MyComplaintController;
 use App\Http\Controllers\My\JobController as MyJobController;
 use App\Http\Controllers\My\PaymentController as MyPaymentController;
 use App\Http\Controllers\PublicPaymentController;
+use App\Http\Controllers\QrScanController;
 use App\Http\Controllers\WaterAccountController;
 use Illuminate\Support\Facades\Route;
 
@@ -31,6 +32,8 @@ Route::prefix('pay')->name('pay.')->group(function () {
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', DashboardController::class)->name('dashboard');
+
+    Route::get('qr/resolve', QrScanController::class)->name('qr.resolve');
 
     Route::get('water-accounts', [WaterAccountController::class, 'index'])->name('water-accounts.index');
     Route::post('water-accounts/{waterAccount}/switch', [WaterAccountController::class, 'switchTo'])->name('water-accounts.switch');
