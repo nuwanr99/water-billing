@@ -22,10 +22,17 @@ class PayHereService
     }
 
     /**
-     * The hosted checkout endpoint (sandbox or live).
+     * The hosted checkout endpoint (sandbox or live), unless a local
+     * override is configured (offline demonstration simulator).
      */
     public function checkoutUrl(): string
     {
+        $override = (string) config('payhere.checkout_url');
+
+        if ($override !== '') {
+            return $override;
+        }
+
         return config('payhere.sandbox')
             ? 'https://sandbox.payhere.lk/pay/checkout'
             : 'https://www.payhere.lk/pay/checkout';

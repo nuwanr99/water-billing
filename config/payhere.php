@@ -19,6 +19,11 @@ return [
 
     'sandbox' => (bool) env('PAYHERE_SANDBOX', true),
 
+    // Optional override of the hosted-checkout endpoint. When set, checkout
+    // posts here instead of the sandbox/live PayHere URL, so the flow can run
+    // against a local gateway simulator for offline demonstrations.
+    'checkout_url' => env('PAYHERE_CHECKOUT_URL', ''),
+
     'currency' => 'LKR',
 
 ];
