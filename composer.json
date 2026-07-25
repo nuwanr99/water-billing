@@ -59,6 +59,10 @@
             "Composer\\Config::disableProcessTimeout",
             "@php artisan dev"
         ],
+        "demo": [
+            "Composer\\Config::disableProcessTimeout",
+            "npx concurrently -k --restart-tries 3 -c \"#93c5fd,#c4b5fd,#4ade80,#fbbf24\" -n \"app,queue,wa-proxy,slides\" \"php artisan serve\" \"php artisan queue:listen --tries=1\" \"php -d upload_max_filesize=12M -d post_max_size=16M ../wa-proxy/artisan serve --port=8100\" \"php -S 127.0.0.1:8200 -t ../viva-presentation/dist\""
+        ],
         "lint": [
             "pint --parallel"
         ],
