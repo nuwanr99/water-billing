@@ -1,6 +1,8 @@
 <?php
 
 use App\Enums\BillStatus;
+use App\Enums\ComplaintStatus;
+use App\Enums\MaintenanceJobStatus;
 use App\Enums\PaymentMethod;
 use App\Enums\PaymentStatus;
 use App\Enums\WaterAccountStatus;
@@ -66,6 +68,17 @@ test('the demo seeder builds six months of consistent operations', function () {
         expect($inactiveAccount->bills()->count())->toBeGreaterThan(0);
     }
 
+    // The newest month's village walk is unfinished: a handful of active
+    // accounts have no reading (and so no bill) yet, leaving room to
+    // demonstrate the billing flow live.
+    $currentMonth = now()->format('Y-m');
+
+    $unreadActiveAccounts = WaterAccount::where('status', WaterAccountStatus::Active)
+        ->whereDoesntHave('readings', fn ($query) => $query->where('billing_month', $currentMonth))
+        ->count();
+
+    expect($unreadActiveAccounts)->toBeGreaterThanOrEqual(5);
+
     // Both ledgers stay internally consistent: every posted journal is
     // balanced, and every stored account balance matches a recalculation.
     expect((float) SystemLedgerLine::sum('amount'))->toBe(0.0);
@@ -79,17 +92,31 @@ test('the demo seeder builds six months of consistent operations', function () {
     });
 
     // Operations around the network: complaints, jobs, costs, and stock.
-    // Current-month events dated after "today" are skipped by design, so
-    // the tail of the complaint plan may not have landed yet.
+    // The newest month's complaints are pulled into the recent past, so
+    // the full plan always lands.
     $complaintCount = Complaint::count();
 
-    expect($complaintCount)->toBeGreaterThanOrEqual(8)->toBeLessThanOrEqual(10)
+    expect($complaintCount)->toBe(12)
         ->and(Complaint::where('status', 'closed')->count())->toBeGreaterThan(0)
         ->and(MaintenanceJob::count())->toBeGreaterThanOrEqual(5)
         ->and(MaintenanceJob::where('status', 'completed')->count())->toBeGreaterThan(0)
         ->and(Expense::count())->toBeGreaterThan(10)
         ->and(InventoryItem::count())->toBe(6)
         ->and(InventoryItem::where('quantity_in_stock', '<', 0)->count())->toBe(0);
+
+    // The newest month always carries live operational activity: recent
+    // complaints, at least one still open and unassigned, and active
+    // (assigned or in-progress) jobs that have crew members assigned.
+    expect(Complaint::where('submitted_at', '>=', now()->subDays(4))->count())->toBeGreaterThanOrEqual(2)
+        ->and(Complaint::where('status', ComplaintStatus::Open)->count())->toBeGreaterThanOrEqual(1);
+
+    $activeJobs = MaintenanceJob::whereIn('status', [MaintenanceJobStatus::Assigned, MaintenanceJobStatus::InProgress])->get();
+
+    expect($activeJobs->count())->toBeGreaterThanOrEqual(1);
+
+    foreach ($activeJobs as $activeJob) {
+        expect($activeJob->assignees()->count())->toBeGreaterThanOrEqual(1);
+    }
 
     // At least one active item has dipped to or below its reorder level,
     // so the Inventory report has a low-stock row to show.

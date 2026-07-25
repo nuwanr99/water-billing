@@ -289,7 +289,7 @@ class DemoSeeder extends Seeder
     {
         return WaterAccount::factory()->for($owner, 'owner')->create([
             'billing_category_id' => $category->id,
-            'account_number' => 'MWS-'.str_pad((string) $sequence, 4, '0', STR_PAD_LEFT),
+            'account_number' => 'ACC-'.str_pad((string) $sequence, 4, '0', STR_PAD_LEFT),
             'meter_number' => 'MTR-'.str_pad((string) (52000 + $sequence), 6, '0', STR_PAD_LEFT),
             'initial_reading' => random_int(120, 2400),
             'connection_address' => $address,
@@ -395,6 +395,8 @@ class DemoSeeder extends Seeder
         $defaulters = [3, 17]; // stop paying from the fourth month
         $payhereAccounts = [10, 21]; // the two Business accounts settle online
 
+        $unreadInCurrentMonth = [2, 7, 13, 19, 24];
+
         $meterValues = [];
 
         foreach ($accounts as $account) {
@@ -408,6 +410,10 @@ class DemoSeeder extends Seeder
             // 1. Readings + bills: the controller walks the villages early
             //    in the month.
             foreach ($accounts as $index => $account) {
+                if ($monthOffset === 0 && in_array($index + $profileIndexOffset, $unreadInCurrentMonth, true)) {
+                    continue;
+                }
+
                 $readAt = $monthStart->addDays(4 + ($index % 5))->setTime(8 + ($index % 6), ($index * 7) % 55);
 
                 if ($readAt->greaterThan($realNow)) {
@@ -529,8 +535,11 @@ class DemoSeeder extends Seeder
     }
 
     /**
-     * Ten complaints across the window; six spawn maintenance jobs, most
-     * get resolved, a few stay open for the demo.
+     * Twelve complaints across the window; seven spawn maintenance jobs,
+     * most get resolved. The newest month always carries live activity —
+     * an open unassigned complaint, an assigned job, and work in
+     * progress — so the operational screens and reports have something
+     * current to show.
      *
      * @param  list<WaterAccount>  $accounts
      * @param  array<string, InventoryItem>  $items
@@ -556,6 +565,8 @@ class DemoSeeder extends Seeder
             [4, 7, ComplaintCategory::Other, 'Billing amount seems too high', 'My shop bill for last month is much higher than usual. Please check whether the reading was taken correctly.', false, true, []],
             [4, 2, ComplaintCategory::Leak, 'Leak in front of the temple road', 'Water is seeping up through the road surface in front of the temple road junction.', true, false, ['pipe20' => 3, 'valve' => 1]],
             [5, 10, ComplaintCategory::Blockage, 'No water for two days', 'We have had no water for two days now. Neighbours on the same line have the same problem.', true, false, []],
+            [5, 16, ComplaintCategory::Other, 'Water meter reading seems wrong', 'This month the meter shows far more units than we could have used. Please check the meter for a fault.', false, false, []],
+            [5, 13, ComplaintCategory::Leak, 'Leak at the roadside valve pit near the school', 'The valve pit by the school road is filling with water and overflowing onto the road.', true, false, ['coupling' => 2]],
         ];
 
         foreach ($plans as $planIndex => [$monthIndex, $accountIndex, $category, $subject, $description, $hasJob, $resolve, $usedItems]) {
@@ -568,7 +579,17 @@ class DemoSeeder extends Seeder
                 ->setTime(9 + ($planIndex % 8), ($planIndex * 13) % 55);
 
             if ($submittedAt->greaterThan($realNow)) {
-                continue;
+                // The newest month's plan tail hasn't happened yet: pull it
+                // into the last few days so the current month always shows
+                // live complaint activity.
+                $submittedAt = $realNow
+                    ->subDays(1 + ($planIndex % 3))
+                    ->setTime(9 + ($planIndex % 8), ($planIndex * 13) % 55)
+                    ->max($realNow->startOfMonth()->addHours(8));
+
+                if ($submittedAt->greaterThan($realNow)) {
+                    $submittedAt = $realNow->subHours(2);
+                }
             }
 
             Date::setTestNow($submittedAt);
@@ -590,7 +611,15 @@ class DemoSeeder extends Seeder
                 continue;
             }
 
-            Date::setTestNow($submittedAt->addDay()->setTime(9, 30));
+            $assignAt = $submittedAt->addDay()->setTime(9, 30);
+
+            // The office has not triaged the newest complaints yet: they
+            // stay open and unassigned.
+            if ($assignAt->greaterThan($realNow)) {
+                continue;
+            }
+
+            Date::setTestNow($assignAt);
             $complaintService->assign($complaint, [$this->controller->id], $this->secretary);
 
             $job = $jobService->create([
@@ -599,7 +628,14 @@ class DemoSeeder extends Seeder
                 'scheduled_date' => now()->addDays(2)->toDateString(),
             ], [$this->controller->id], $this->secretary, $complaint);
 
-            Date::setTestNow($submittedAt->addDays(2)->setTime(8, 45));
+            $startAt = $submittedAt->addDays(2)->setTime(8, 45);
+
+            // The crew has not reached the newest jobs: they stay Assigned.
+            if ($startAt->greaterThan($realNow)) {
+                continue;
+            }
+
+            Date::setTestNow($startAt);
             $jobService->updateStatus($job, MaintenanceJobStatus::InProgress, 'Crew on site, work started.', $this->controller);
 
             foreach ($usedItems as $itemKey => $quantity) {

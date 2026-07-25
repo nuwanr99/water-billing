@@ -38,7 +38,7 @@
 
         @vite(['resources/css/app.css', 'resources/js/app.ts', "resources/js/pages/{$page['component']}.vue"])
         <x-inertia::head>
-            <title>{{ config('app.name', 'Medamahanuwara Water Society') }}</title>
+            <title>{{ config('app.name', 'බෝම්බ්‍රාව - ගලේකලේ ප්‍රජා ජල සමිතිය') }}</title>
         </x-inertia::head>
     </head>
     <body class="font-sans antialiased">

@@ -6,7 +6,7 @@ import SettingsLayout from '@/layouts/settings/Layout.vue';
 import { initializeFlashToast } from '@/lib/flashToast';
 
 const appName =
-  import.meta.env.VITE_APP_NAME || 'Medamahanuwara Water Society';
+  import.meta.env.VITE_APP_NAME || 'බෝම්බ්‍රාව - ගලේකලේ ප්‍රජා ජල සමිතිය';
 
 createInertiaApp({
   title: (title) => (title ? `${title} - ${appName}` : appName),
