@@ -23,14 +23,14 @@ test('the demo seeder builds six months of consistent operations', function () {
     $this->seed(DemoSeeder::class);
 
     // Population: 20 ordinary members plus 4 exco officers (who must be
-    // members with connections of their own), 29 accounts in the villages.
+    // members with connections of their own), 30 accounts in the villages.
     expect(User::role('Member')->count())->toBe(24)
-        ->and(WaterAccount::count())->toBe(29)
-        ->and(WaterAccount::where('connection_address', 'like', '%Medamahanuwara%')->count())->toBe(29);
+        ->and(WaterAccount::count())->toBe(30)
+        ->and(WaterAccount::where('connection_address', 'like', '%Medamahanuwara%')->count())->toBe(30);
 
     // Every exco officer satisfies the membership rule: Member role and
     // at least one water account.
-    foreach (['saman@demo.lk', 'herath@demo.lk', 'anula@demo.lk', 'tikiri@demo.lk'] as $email) {
+    foreach (['watercontroller@demo.lk', 'treasurer@demo.lk', 'secretary@demo.lk', 'president@demo.lk'] as $email) {
         $officer = User::query()->where('email', $email)->firstOrFail();
 
         expect($officer->hasRole('Member'))->toBeTrue()
@@ -57,6 +57,16 @@ test('the demo seeder builds six months of consistent operations', function () {
             ->and($payment->ledgerEntry)->not->toBeNull()
             ->and($payment->journal)->not->toBeNull();
     });
+
+    // member2 is left primed for the live late-fee demonstration: at least
+    // one bill still Approved with its due date already past, so running
+    // bills:mark-overdue on stage has something to flip.
+    $member2 = User::query()->where('email', 'member2@demo.lk')->firstOrFail();
+
+    expect(Bill::whereIn('water_account_id', $member2->waterAccounts()->pluck('id'))
+        ->where('status', BillStatus::Approved)
+        ->whereDate('due_date', '<', today())
+        ->count())->toBeGreaterThanOrEqual(1);
 
     // A couple of defaulting accounts are marked inactive but keep their
     // billing history.
@@ -136,7 +146,7 @@ test('the demo seeder builds six months of consistent operations', function () {
 
     $this->seed(DemoSeeder::class);
 
-    expect(WaterAccount::count())->toBe(29)
+    expect(WaterAccount::count())->toBe(30)
         ->and(Bill::count())->toBe($billCount)
         ->and(Complaint::count())->toBe($complaintCount);
 });

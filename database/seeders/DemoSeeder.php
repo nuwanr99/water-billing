@@ -2,10 +2,12 @@
 
 namespace Database\Seeders;
 
+use App\Enums\BillStatus;
 use App\Enums\ComplaintCategory;
 use App\Enums\MaintenanceJobStatus;
 use App\Enums\StockMovementType;
 use App\Enums\WaterAccountStatus;
+use App\Models\Bill;
 use App\Models\BillingCategory;
 use App\Models\InventoryItem;
 use App\Models\MeterReading;
@@ -19,8 +21,10 @@ use App\Services\ExpenseService;
 use App\Services\InventoryService;
 use App\Services\MaintenanceJobService;
 use App\Services\PaymentService;
+use App\Services\Settings;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\Queue;
@@ -69,7 +73,42 @@ class DemoSeeder extends Seeder
      *
      * @var list<int>
      */
-    protected array $secondAccountMembers = [0, 2, 5, 9, 14];
+    protected array $secondAccountMembers = [0, 2, 5, 9, 14, 18];
+
+    /**
+     * Demonstrations send every WhatsApp message to one handset, so the
+     * notifications can be shown arriving on a real phone.
+     */
+    protected const string DEMO_WA_NUMBER = '0776665137';
+
+    /**
+     * The member who signs in as member@demo.lk: one login per role.
+     */
+    protected const int DEMO_MEMBER_INDEX = 18;
+
+    /**
+     * The member who signs in as member2@demo.lk: the late payer. Their
+     * single connection (account position 11) carries real arrears and the
+     * bill held back for the live `bills:mark-overdue` demonstration.
+     */
+    protected const int DEMO_MEMBER_2_INDEX = 8;
+
+    /**
+     * Accounts in arrears whose newest past-due bill is left Approved, so
+     * running "bills:mark-overdue" during a demonstration flips them and
+     * posts the late fees while the audience watches. ACC-0012 belongs to
+     * the late-payment member; the others are ordinary accounts behind on
+     * payment, so the job is seen working across the society, not on one
+     * rigged account.
+     *
+     * @var list<string>
+     */
+    protected const array LATE_FEE_DEMO_ACCOUNTS = ['ACC-0009', 'ACC-0012', 'ACC-0014'];
+
+    /**
+     * member2's login, kept next to the index it belongs to.
+     */
+    protected const string DEMO_MEMBER_2_EMAIL = 'member2@demo.lk';
 
     /**
      * The exco officers. A water connection is a membership requirement
@@ -79,10 +118,10 @@ class DemoSeeder extends Seeder
      * @var array<string, array{string, string, string, string}>
      */
     protected array $staffProfiles = [
-        'saman@demo.lk' => ['Saman', 'Kumara', 'Water Controller', 'No. 21, Galekale, Medamahanuwara'],
-        'herath@demo.lk' => ['Herath', 'Banda', 'Treasurer', 'No. 8, Bombrawa, Medamahanuwara'],
-        'anula@demo.lk' => ['Anula', 'Ratnayake', 'Secretary', 'No. 54, Galekale, Medamahanuwara'],
-        'tikiri@demo.lk' => ['Tikiri', 'Bandara', 'President', 'No. 17, Bombrawa, Medamahanuwara'],
+        'watercontroller@demo.lk' => ['Saman', 'Kumara', 'Water Controller', 'No. 21, Galekale, Medamahanuwara'],
+        'treasurer@demo.lk' => ['Herath', 'Banda', 'Treasurer', 'No. 8, Bombrawa, Medamahanuwara'],
+        'secretary@demo.lk' => ['Anula', 'Ratnayake', 'Secretary', 'No. 54, Galekale, Medamahanuwara'],
+        'president@demo.lk' => ['Tikiri', 'Bandara', 'President', 'No. 17, Bombrawa, Medamahanuwara'],
     ];
 
     protected User $controller;
@@ -108,7 +147,7 @@ class DemoSeeder extends Seeder
         // up in the queue table for every historical record; drop them.
         Queue::fake();
 
-        if (User::query()->where('email', 'saman@demo.lk')->exists()) {
+        if (User::query()->where('email', 'watercontroller@demo.lk')->exists()) {
             $this->topUpStaffAccounts();
 
             return;
@@ -135,7 +174,11 @@ class DemoSeeder extends Seeder
             Date::setTestNow();
         }
 
-        Artisan::call('bills:mark-overdue');
+        $this->markOverdueHoldingBackDemoBills();
+
+        // Every account, including the setup administrator, notifies the
+        // one handset used for demonstrations.
+        User::query()->update(['wa_number' => self::DEMO_WA_NUMBER]);
 
         $this->command->info('Demo data ready. Staff logins (password: "password"):');
 
@@ -143,7 +186,8 @@ class DemoSeeder extends Seeder
             $this->command->line("  {$role}: {$email}");
         }
 
-        $this->command->line('  Members: nimal@demo.lk … swarna@demo.lk');
+        $this->command->line('  Member: member@demo.lk (other members: nimal@demo.lk … swarna@demo.lk)');
+        $this->command->line('  Member — late payment demo: '.self::DEMO_MEMBER_2_EMAIL.' (in arrears; one past-due bill is still Approved, so "php artisan bills:mark-overdue" flips it and posts the late fee live)');
     }
 
     /**
@@ -157,6 +201,7 @@ class DemoSeeder extends Seeder
 
         $this->loadLedgerAccounts();
         $this->loadStaff();
+        $this->seedComplaintNotifyRecipients();
 
         try {
             $newAccounts = $this->seedStaffAccounts();
@@ -168,7 +213,7 @@ class DemoSeeder extends Seeder
             Date::setTestNow();
         }
 
-        Artisan::call('bills:mark-overdue');
+        $this->markOverdueHoldingBackDemoBills();
 
         $this->command->info(count($newAccounts).' staff water account(s) backfilled with six months of history.');
     }
@@ -181,10 +226,10 @@ class DemoSeeder extends Seeder
 
     protected function loadStaff(): void
     {
-        $this->controller = User::query()->where('email', 'saman@demo.lk')->firstOrFail();
-        $this->treasurer = User::query()->where('email', 'herath@demo.lk')->firstOrFail();
-        $this->secretary = User::query()->where('email', 'anula@demo.lk')->firstOrFail();
-        $this->president = User::query()->where('email', 'tikiri@demo.lk')->firstOrFail();
+        $this->controller = User::query()->where('email', 'watercontroller@demo.lk')->firstOrFail();
+        $this->treasurer = User::query()->where('email', 'treasurer@demo.lk')->firstOrFail();
+        $this->secretary = User::query()->where('email', 'secretary@demo.lk')->firstOrFail();
+        $this->president = User::query()->where('email', 'president@demo.lk')->firstOrFail();
     }
 
     /**
@@ -199,13 +244,27 @@ class DemoSeeder extends Seeder
                 'email' => $email,
                 'phone' => '07712300'.str_pad((string) random_int(10, 99), 2, '0'),
                 'address' => $address,
-                'wa_number' => null,
+                'wa_number' => self::DEMO_WA_NUMBER,
             ]);
 
             $user->assignRole(['Member', $role]);
         }
 
         $this->loadStaff();
+        $this->seedComplaintNotifyRecipients();
+    }
+
+    /**
+     * Who hears about a new complaint. The President oversees the society
+     * and the Water Controller does the field work, so both are set as
+     * recipients out of the box rather than leaving the list empty.
+     */
+    protected function seedComplaintNotifyRecipients(): void
+    {
+        app(Settings::class)->set(Settings::COMPLAINT_NOTIFY_USER_IDS, [
+            $this->president->id,
+            $this->controller->id,
+        ]);
     }
 
     /**
@@ -259,10 +318,14 @@ class DemoSeeder extends Seeder
             $member = User::factory()->create([
                 'first_name' => $first,
                 'last_name' => $last,
-                'email' => strtolower($first).'@demo.lk',
+                'email' => match ($index) {
+                    self::DEMO_MEMBER_INDEX => 'member@demo.lk',
+                    self::DEMO_MEMBER_2_INDEX => self::DEMO_MEMBER_2_EMAIL,
+                    default => strtolower($first).'@demo.lk',
+                },
                 'phone' => '07760012'.str_pad((string) $index, 2, '0', STR_PAD_LEFT),
                 'address' => $address,
-                'wa_number' => $index % 3 === 0 ? '947760012'.str_pad((string) $index, 2, '0', STR_PAD_LEFT) : null,
+                'wa_number' => self::DEMO_WA_NUMBER,
             ]);
 
             $member->assignRole('Member');
@@ -273,10 +336,17 @@ class DemoSeeder extends Seeder
             $accounts[] = $this->waterAccount($member, $category, $address, $accountSequence++);
 
             if (in_array($index, $this->secondAccountMembers, true)) {
+                // The demo member's second connection is a business one, so
+                // account switching and both tariff structures can be shown
+                // from a single login.
+                $isDemoMember = $index === self::DEMO_MEMBER_INDEX;
+
                 $accounts[] = $this->waterAccount(
                     $member,
-                    $domestic,
-                    'Paddy field plot, '.$village.', Medamahanuwara',
+                    $isDemoMember ? $business : $domestic,
+                    $isDemoMember
+                        ? 'Village bakery, '.$village.', Medamahanuwara'
+                        : 'Paddy field plot, '.$village.', Medamahanuwara',
                     $accountSequence++,
                 );
             }
@@ -298,11 +368,13 @@ class DemoSeeder extends Seeder
     }
 
     /**
-     * The two defaulters (indexes 3 and 17 — see $defaulters in
-     * seedSixMonthsOfOperations) stopped paying from the fourth month, so
-     * the society treats their connections as disconnected. Their bill and
-     * payment history is untouched; only the account status changes. No
-     * deactivation service exists yet, so this is a direct model update.
+     * Two of the accounts that stop paying (indexes 3 and 17 — see
+     * $defaulters in seedSixMonthsOfOperations) are treated as
+     * disconnected by the society. member2's account (index 11) is not:
+     * its arrears are demonstrated live, so the connection stays Active.
+     * Their bill and payment history is untouched; only the account status
+     * changes. No deactivation service exists yet, so this is a direct
+     * model update.
      *
      * @param  list<WaterAccount>  $accounts
      */
@@ -311,6 +383,65 @@ class DemoSeeder extends Seeder
         foreach ([3, 17] as $index) {
             $accounts[$index]->update(['status' => WaterAccountStatus::Inactive]);
         }
+    }
+
+    /**
+     * Flip every past-due bill overdue except the newest one on each of
+     * member2's accounts: that bill stays Approved with its due date in
+     * the past, so running `bills:mark-overdue` on stage flips it and
+     * posts the late fee in front of the audience.
+     *
+     * The hold-back has to happen before the command runs, not after:
+     * account ledger entries carry a running balance, so deleting or
+     * editing a penalty entry once posted would leave every later balance
+     * on the account wrong. Parking the due date one month ahead keeps the
+     * bill out of the command's query, and the original date is written
+     * back straight afterwards.
+     */
+    protected function markOverdueHoldingBackDemoBills(): void
+    {
+        $heldBack = $this->heldBackPastDueBills();
+
+        Bill::query()
+            ->whereIn('id', $heldBack->keys())
+            ->update(['due_date' => today()->addMonth()->toDateString()]);
+
+        try {
+            Artisan::call('bills:mark-overdue');
+        } finally {
+            foreach ($heldBack as $billId => $dueDate) {
+                Bill::query()->whereKey($billId)->update(['due_date' => $dueDate]);
+            }
+        }
+    }
+
+    /**
+     * The bills held back from the seed's own overdue run, keyed by id with
+     * their original due date: the newest past-due bill on each of a few
+     * accounts in arrears, including the late-payment member's.
+     *
+     * One bill per account, spread over several accounts, is what a nightly
+     * run actually produces. Several on one account would mean the job had
+     * not run for months.
+     *
+     * @return Collection<int, string>
+     */
+    protected function heldBackPastDueBills(): Collection
+    {
+        $accountIds = WaterAccount::query()
+            ->whereIn('account_number', self::LATE_FEE_DEMO_ACCOUNTS)
+            ->pluck('id');
+
+        return Bill::query()
+            ->whereIn('water_account_id', $accountIds)
+            ->where('is_current', true)
+            ->where('status', BillStatus::Approved)
+            ->whereDate('due_date', '<', today())
+            ->orderByDesc('due_date')
+            ->get()
+            ->groupBy('water_account_id')
+            ->map(fn (Collection $accountBills): Bill => $accountBills->first())
+            ->mapWithKeys(fn (Bill $bill): array => [$bill->id => $bill->due_date->toDateString()]);
     }
 
     /**
@@ -390,12 +521,18 @@ class DemoSeeder extends Seeder
         }
 
         // Payment behaviour by account position: everyone else pays promptly.
-        $partialPayers = [8, 13, 23];
+        // Position 11 is member2@demo.lk (member profile 8): late and short
+        // from the start, then nothing from the fourth month, so the account
+        // reaches the demo with genuine arrears behind it.
+        $partialPayers = [8, 11, 13, 23];
         $latePayers = [5, 11, 21];
-        $defaulters = [3, 17]; // stop paying from the fourth month
+        $defaulters = [3, 11, 17]; // stop paying from the fourth month
         $payhereAccounts = [10, 21]; // the two Business accounts settle online
 
-        $unreadInCurrentMonth = [2, 7, 13, 19, 24];
+        // Positions 23 and 24 are the demo member's two connections and 11 is
+        // the late-payment member's, all left unread so the reading can be
+        // taken live; the rest give the reading list other accounts to show.
+        $unreadInCurrentMonth = [2, 7, 11, 13, 19, 23, 24];
 
         $meterValues = [];
 
@@ -578,10 +715,11 @@ class DemoSeeder extends Seeder
                 ->addDays(9 + ($planIndex % 14))
                 ->setTime(9 + ($planIndex % 8), ($planIndex * 13) % 55);
 
-            if ($submittedAt->greaterThan($realNow)) {
-                // The newest month's plan tail hasn't happened yet: pull it
-                // into the last few days so the current month always shows
-                // live complaint activity.
+            if ($monthIndex === 5) {
+                // The newest month always shows live complaint activity,
+                // however far into the month the data is seeded: these sit
+                // within the last few days rather than on a fixed date that
+                // ages out as real time passes.
                 $submittedAt = $realNow
                     ->subDays(1 + ($planIndex % 3))
                     ->setTime(9 + ($planIndex % 8), ($planIndex * 13) % 55)
